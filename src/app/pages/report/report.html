@@ -1,0 +1,62 @@
+<div class="report-container">
+  <div class="report-header">
+    <h1>Gestión de Reporte de Revisión</h1>
+    <button class="btn-back" (click)="goBack()">← Volver a Revisiones</button>
+  </div>
+
+  <div class="report-form-section">
+    <h2>{{ reportId ? 'Editar Reporte' : 'Crear Reporte' }}</h2>
+    
+    <form [formGroup]="reportForm" (ngSubmit)="onSubmitReport()">
+      <div class="form-group">
+        <label for="resume">Resumen Ejecutivo *</label>
+        <textarea
+          id="resume"
+          formControlName="resume"
+          placeholder="Escribe un resumen ejecutivo de la revisión sistemática (mínimo 50 caracteres)"
+          class="form-textarea"
+          rows="6"></textarea>
+        <span *ngIf="reportForm.get('resume')?.invalid && reportForm.get('resume')?.touched" class="error">
+          El resumen debe tener al menos 50 caracteres
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="conclusions">Conclusiones *</label>
+        <textarea
+          id="conclusions"
+          formControlName="conclusions"
+          placeholder="Detalla las conclusiones principales de la revisión (mínimo 50 caracteres)"
+          class="form-textarea"
+          rows="6"></textarea>
+        <span *ngIf="reportForm.get('conclusions')?.invalid && reportForm.get('conclusions')?.touched" class="error">
+          Las conclusiones deben tener al menos 50 caracteres
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="analysis">Análisis de Resultados *</label>
+        <textarea
+          id="analysis"
+          formControlName="analysis"
+          placeholder="Proporciona un análisis detallado de los resultados obtenidos (mínimo 50 caracteres)"
+          class="form-textarea"
+          rows="8"></textarea>
+        <span *ngIf="reportForm.get('analysis')?.invalid && reportForm.get('analysis')?.touched" class="error">
+          El análisis debe tener al menos 50 caracteres
+        </span>
+      </div>
+
+      <div *ngIf="submitError" class="error-message">
+        {{ submitError }}
+      </div>
+
+      <button 
+        type="submit" 
+        class="btn-submit"
+        [disabled]="reportForm.invalid || loading">
+        {{ loading ? 'Guardando...' : (reportId ? 'Actualizar Reporte' : 'Crear Reporte') }}
+      </button>
+    </form>
+  </div>
+</div>

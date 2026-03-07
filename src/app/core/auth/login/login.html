@@ -1,0 +1,42 @@
+
+
+<div class="login-page">
+  <!-- Contenido principal -->
+  <div class="login-content">
+    <p class="login-title">Login</p>
+
+    <input
+      [(ngModel)]="userName"
+      type="text"
+      placeholder="Username"  
+      (keydown.enter)="onLoginClick()"
+      class="login-input"
+    />
+
+    <div class="password-container">
+      <input
+        [(ngModel)]="password"
+        [type]="showPassword ? 'text' : 'password'"
+        placeholder="Password"
+        (keydown.enter)="onLoginClick()"
+        class="login-input"
+      />
+
+      <span class="password-toggle" (click)="togglePassword()">
+        {{ showPassword ? '🙈' : '👁️' }}
+      </span>
+    </div>
+
+    <p *ngIf="usernameError" class="error-text">{{ usernameError }}</p>
+    <p *ngIf="passwordError" class="error-text">{{ passwordError }}</p>
+
+    <button class="login-button" (click)="onLoginClick()">Log in</button>
+
+    <p class="signup-text">
+      ¿No tienes cuenta?
+      <span class="signup-link" (click)="goToRegister()">
+        Regístrate
+      </span>
+    </p>
+  </div>
+</div>

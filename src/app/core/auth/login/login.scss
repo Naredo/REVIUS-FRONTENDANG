@@ -1,0 +1,244 @@
+/* Fondo de la página */
+.login-page {
+  min-height: 100vh;
+  background-color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Botón de Perfil en esquina derecha */
+.profile-button-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.profile-button {
+  padding: 10px 20px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.profile-button:hover {
+  background-color: #1e40af;
+}
+
+
+.login-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px;
+  background-color: #e5e7eb;
+}
+
+.login-content > p.text-4xl {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  position: relative;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background-color: #e5e7eb;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+}
+
+.modal-close:hover {
+  background-color: #d1d5db;
+}
+
+.modal-content > p.text-4xl {
+  font-size: 1.8rem;
+  margin-bottom: 30px;
+  font-weight: bold;
+  margin-top: 0;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: #6b7280;
+  font-size: 1rem;
+  padding: 20px;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-field label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.profile-field p {
+  padding: 10px;
+  background-color: #f3f4f6;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  color: #1f2937;
+  margin: 0;
+}
+
+.logout-button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 20px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #dc2626;
+}
+
+
+input.login-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+}
+
+
+.password-container {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  margin-bottom: 0.5rem;
+}
+
+.password-container input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  cursor: pointer;
+}
+
+
+button.login-button {
+  width: 100%;
+  max-width: 360px;
+  padding: 12px;
+  margin-top: 10px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button.login-button:hover {
+  background-color: #1e40af;
+}
+
+
+.login-title {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  margin-top: 0;
+}
+
+
+.signup-text {
+  margin-top: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  font-size: 0.875rem;
+  max-width: 360px;
+}
+
+.signup-link {
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+
+.error-text {
+  color: #dc2626;
+  font-size: 0.875rem;
+}

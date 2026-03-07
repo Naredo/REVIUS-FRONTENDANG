@@ -1,0 +1,130 @@
+/* CONTENEDOR PRINCIPAL */
+.admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* TÍTULO */
+.admin-container h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #1f2937;
+}
+
+/* ESTADOS */
+.loading {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px;
+  font-size: 1.1rem;
+}
+
+.error {
+  background-color: #fee2e2;
+  color: #dc2626;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-size: 0.95rem;
+}
+
+/* TABLA */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-table thead {
+  background-color: #f9fafb;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.admin-table th {
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table td {
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ACCIONES */
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* BOTONES BASE */
+.actions button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: white;
+}
+
+/* CAMBIAR PERMISOS */
+.actions button:first-child {
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.actions button:first-child:hover {
+  background-color: #eff6ff;
+}
+
+/* ELIMINAR PERFIL */
+.actions .warning {
+  color: #f59e0b;
+  border: 1px solid #f59e0b;
+}
+
+.actions .warning:hover {
+  background-color: #fffbeb;
+}
+
+/* ELIMINAR USUARIO */
+.actions .danger {
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.actions .danger:hover {
+  background-color: #fee2e2;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .admin-table {
+    font-size: 0.85rem;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,317 @@
+<div class="protocol-container">
+  <div class="protocol-header">
+    <h1>Gestión de Protocolo</h1>
+    <button class="btn-back" (click)="goBack()">← Volver a Revisiones</button>
+  </div>
+
+  <!-- Tabs de navegación -->
+  <div class="tabs">
+    <button 
+      class="tab" 
+      [class.active]="currentSection === 'basic'"
+      (click)="changeSection('basic')">
+      Información Básica
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="currentSection === 'keywords'"
+      (click)="changeSection('keywords')">
+      Palabras Clave
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="currentSection === 'questions'"
+      (click)="changeSection('questions')">
+      Preguntas de Investigación
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="currentSection === 'sources'"
+      (click)="changeSection('sources')">
+      Fuentes
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="currentSection === 'criteria'"
+      (click)="changeSection('criteria')">
+      Criterios de Selección
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="currentSection === 'forms'"
+      (click)="changeSection('forms')">
+      Formularios
+    </button>
+  </div>
+
+  <!-- Sección: Información Básica -->
+  <div *ngIf="currentSection === 'basic'" class="section">
+    <h2>Información Básica del Protocolo</h2>
+    <form [formGroup]="protocolForm">
+      <div class="form-group">
+        <label for="sourcesSearchMethods">Métodos de Búsqueda de Fuentes *</label>
+        <textarea
+          id="sourcesSearchMethods"
+          formControlName="sourcesSearchMethods"
+          placeholder="Describe los métodos de búsqueda que se utilizarán"
+          class="form-textarea"
+          rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="studiesTypesDefinition">Definición de Tipos de Estudios *</label>
+        <textarea
+          id="studiesTypesDefinition"
+          formControlName="studiesTypesDefinition"
+          placeholder="Define qué tipos de estudios se incluirán"
+          class="form-textarea"
+          rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="studiesInitialSelection">Selección Inicial de Estudios *</label>
+        <textarea
+          id="studiesInitialSelection"
+          formControlName="studiesInitialSelection"
+          placeholder="Describe el proceso de selección inicial"
+          class="form-textarea"
+          rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="studiesQualityEvaluation">Evaluación de Calidad de Estudios *</label>
+        <textarea
+          id="studiesQualityEvaluation"
+          formControlName="studiesQualityEvaluation"
+          placeholder="Describe cómo se evaluará la calidad de los estudios"
+          class="form-textarea"
+          rows="4"></textarea>
+      </div>
+
+      <div *ngIf="submitError" class="error-message">
+        {{ submitError }}
+      </div>
+
+      <button 
+        type="button" 
+        class="btn-submit"
+        [disabled]="protocolForm.invalid || loading"
+        (click)="onSubmitProtocol()">
+        {{ loading ? 'Guardando...' : (protocolId ? 'Actualizar Protocolo' : 'Crear Protocolo') }}
+      </button>
+    </form>
+  </div>
+
+  <!-- Sección: Keywords -->
+  <div *ngIf="currentSection === 'keywords'" class="section">
+    <h2>Palabras Clave</h2>
+    
+    <div class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newKeyword"
+        placeholder="Nueva palabra clave"
+        class="form-input"
+        (keyup.enter)="addKeyword()"
+      />
+      <button class="btn-add" (click)="addKeyword()" [disabled]="!newKeyword.trim() || !protocolId">
+        + Añadir
+      </button>
+    </div>
+
+    <div *ngIf="!protocolId" class="info-message">
+      Primero debes crear el protocolo en la sección "Información Básica"
+    </div>
+
+    <div class="items-list">
+      <div *ngFor="let keyword of keywords" class="item-card">
+        <span>{{ keyword.keyword }}</span>
+        <button class="btn-remove" (click)="removeKeyword(keyword)">✕</button>
+      </div>
+
+      <div *ngIf="keywords.length === 0 && protocolId" class="empty-state">
+        No hay palabras clave añadidas
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Preguntas de Investigación -->
+  <div *ngIf="currentSection === 'questions'" class="section">
+    <h2>Preguntas de Investigación</h2>
+
+    <div class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newMainQuestion"
+        placeholder="Nueva pregunta principal"
+        class="form-input"
+        (keyup.enter)="addMainQuestion()"
+      />
+      <button class="btn-add" (click)="addMainQuestion()" [disabled]="!newMainQuestion.trim() || !protocolId">
+        + Añadir Pregunta Principal
+      </button>
+    </div>
+
+    <div *ngIf="!protocolId" class="info-message">
+      Primero debes crear el protocolo en la sección "Información Básica"
+    </div>
+
+    <div class="questions-list">
+      <div *ngFor="let question of mainQuestions" class="question-card">
+        <h4>{{ question.question }}</h4>
+        
+        <div class="secondary-questions-section">
+          <div class="add-item-form">
+            <input
+              type="text"
+              [(ngModel)]="newSecondaryQuestion"
+              placeholder="Pregunta secundaria"
+              class="form-input"
+              (keyup.enter)="addSecondaryQuestion(question.id!)"
+            />
+            <button 
+              class="btn-add-small" 
+              (click)="addSecondaryQuestion(question.id!)"
+              [disabled]="!newSecondaryQuestion.trim()">
+              + Añadir Secundaria
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="mainQuestions.length === 0 && protocolId" class="empty-state">
+        No hay preguntas de investigación añadidas
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Fuentes -->
+  <div *ngIf="currentSection === 'sources'" class="section">
+    <h2>Fuentes de Datos</h2>
+
+    <h3>Fuentes Bibliográficas</h3>
+    <div class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newSourceName"
+        placeholder="Nombre de la fuente (ej: IEEE Xplore)"
+        class="form-input"
+      />
+      <input
+        type="text"
+        [(ngModel)]="newSourceUrl"
+        placeholder="URL (opcional)"
+        class="form-input"
+      />
+      <button class="btn-add" (click)="addSource()" [disabled]="!newSourceName.trim() || !protocolId">
+        + Añadir Fuente
+      </button>
+    </div>
+
+    <div class="items-list">
+      <div *ngFor="let source of sources" class="item-card">
+        <div>
+          <strong>{{ source.name }}</strong>
+          <span *ngIf="source.url" class="source-url">{{ source.url }}</span>
+        </div>
+        <button class="btn-remove" (click)="removeSource(source)">✕</button>
+      </div>
+
+      <div *ngIf="sources.length === 0 && protocolId" class="empty-state">
+        No hay fuentes añadidas
+      </div>
+    </div>
+
+    <h3>Snowballing</h3>
+    <div class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newSnowballingSource"
+        placeholder="Fuente de origen"
+        class="form-input"
+      />
+      <select [(ngModel)]="newSnowballingType" class="form-select">
+        <option value="FORWARD">Forward</option>
+        <option value="BACKWARD">Backward</option>
+      </select>
+      <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
+        + Añadir Snowballing
+      </button>
+    </div>
+
+    <div class="items-list">
+      <div *ngFor="let snowballing of snowballings" class="item-card">
+        <div>
+          <strong>{{ snowballing.source }}</strong>
+          <span class="badge">{{ snowballing.snowballingType }}</span>
+        </div>
+        <button class="btn-remove" (click)="removeSnowballing(snowballing)">✕</button>
+      </div>
+
+      <div *ngIf="snowballings.length === 0 && protocolId" class="empty-state">
+        No hay snowballings añadidos
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Criterios de Selección -->
+  <div *ngIf="currentSection === 'criteria'" class="section">
+    <h2>Criterios de Selección</h2>
+
+    <h3>Criterios de Selección de Estudios</h3>
+    <div class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newStudyCriterion"
+        placeholder="Nuevo criterio de selección de estudio"
+        class="form-input"
+        (keyup.enter)="addStudyCriterion()"
+      />
+      <button class="btn-add" (click)="addStudyCriterion()" [disabled]="!newStudyCriterion.trim() || !protocolId">
+        + Añadir
+      </button>
+    </div>
+
+    <div class="items-list">
+      <div *ngFor="let criterion of studyCriteria" class="item-card">
+        <span>{{ criterion.criterion }}</span>
+      </div>
+
+      <div *ngIf="studyCriteria.length === 0 && protocolId" class="empty-state">
+        No hay criterios de selección de estudios añadidos
+      </div>
+    </div>
+
+    <h3>Criterios de Selección de Fuentes</h3>
+    <div class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newSourcesCriterion"
+        placeholder="Nuevo criterio de selección de fuente"
+        class="form-input"
+        (keyup.enter)="addSourcesCriterion()"
+      />
+      <button class="btn-add" (click)="addSourcesCriterion()" [disabled]="!newSourcesCriterion.trim() || !protocolId">
+        + Añadir
+      </button>
+    </div>
+
+    <div class="items-list">
+      <div *ngFor="let criterion of sourcesCriteria" class="item-card">
+        <span>{{ criterion.criterion }}</span>
+      </div>
+
+      <div *ngIf="sourcesCriteria.length === 0 && protocolId" class="empty-state">
+        No hay criterios de selección de fuentes añadidos
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Formularios -->
+  <div *ngIf="currentSection === 'forms'" class="section">
+    <h2>Formularios de Calidad y Extracción</h2>
+    <div class="info-message">
+      Esta sección estará disponible próximamente para configurar formularios personalizados.
+    </div>
+  </div>
+</div>

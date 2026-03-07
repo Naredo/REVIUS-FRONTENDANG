@@ -1,0 +1,46 @@
+<form
+  class="register-page"
+  [formGroup]="form"
+  (ngSubmit)="onSignUp()"
+>
+
+  <p class="text-4xl font-extrabold">Sign Up</p>
+
+  <input
+    placeholder="Username"
+    formControlName="username"
+  />
+
+  <div class="relative">
+    <input
+      [type]="showPassword ? 'text' : 'password'"
+      placeholder="Password"
+      formControlName="password"
+    />
+    <span (click)="togglePassword()">👁</span>
+  </div>
+
+  <div class="relative">
+    <input
+      [type]="showRepeatedPassword ? 'text' : 'password'"
+      placeholder="Confirm password"
+      formControlName="repeatedPassword"
+    />
+    <span (click)="toggleRepeatedPassword()">👁</span>
+  </div>
+
+  <input placeholder="Name" formControlName="name" />
+  <input placeholder="Email" formControlName="email" />
+  <input placeholder="Work field" formControlName="workField" />
+  <input placeholder="Institution" formControlName="institution" />
+   <button type="submit">
+    Sign Up
+  </button>
+
+  <p class="text-red-600" *ngFor="let err of errors | keyvalue">
+    {{ err.value }}
+  </p>
+
+ 
+
+</form>

@@ -1,0 +1,214 @@
+
+<div class="reviews-container">
+  <div class="reviews-header">
+    <h1>Mis Revisiones Sistemáticas</h1>
+    <button 
+      class="btn-create" 
+      (click)="toggleCreateForm()"
+      [disabled]="loading">
+      {{ showCreateForm ? '✕ Cancelar' : '+ Nueva Revisión' }}
+    </button>
+  </div>
+
+  <!-- Formulario de creación -->
+  <div *ngIf="showCreateForm" class="create-form-section">
+    <h2 *ngIf="!isEditing">Crear Nueva Revisión Sistemática</h2>
+    <h2 *ngIf="isEditing">Editar Revisión Sistemática</h2>
+    
+    <form [formGroup]="reviewForm" (ngSubmit)="onCreateReview()">
+      <div class="form-group">
+        <label for="title">Título *</label>
+        <input
+          id="title"
+          type="text"
+          formControlName="title"
+          placeholder="Título de la revisión"
+          class="form-input"
+        />
+        <span *ngIf="reviewForm.get('title')?.invalid && reviewForm.get('title')?.touched" class="error">
+          El título debe tener al menos 5 caracteres
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="description">Descripción *</label>
+        <textarea
+          id="description"
+          formControlName="description"
+          placeholder="Descripción detallada de la revisión"
+          class="form-textarea"
+          rows="4"></textarea>
+        <span *ngIf="reviewForm.get('description')?.invalid && reviewForm.get('description')?.touched" class="error">
+          La descripción debe tener al menos 10 caracteres
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="objective">Objetivo *</label>
+        <input
+          id="objective"
+          type="text"
+          formControlName="objective"
+          placeholder="Objetivo principal de la revisión"
+          class="form-input"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="workField">Área de trabajo *</label>
+        <input
+          id="workField"
+          type="text"
+          formControlName="workField"
+          placeholder="Ej: Ingeniería de Software, Medicina, etc."
+          class="form-input"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="publicVisibility">
+          <input
+            id="publicVisibility"
+            type="checkbox"
+            formControlName="publicVisibility"
+          />
+          Hacer esta revisión pública
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="scope">Alcance</label>
+        <input
+          id="scope"
+          type="text"
+          formControlName="scope"
+          placeholder="Alcance de la revisión"
+          class="form-input"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="methodology">Metodología</label>
+        <textarea
+          id="methodology"
+          formControlName="methodology"
+          placeholder="Metodología a usar"
+          class="form-textarea"
+          rows="3"></textarea>
+      </div>
+
+      <div *ngIf="submitError" class="error-message">
+        {{ submitError }}
+      </div>
+
+      <button 
+        type="submit" 
+        class="btn-submit"
+        [disabled]="reviewForm.invalid || loading">
+        {{ loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar cambios' : 'Crear Revisión') }}
+      </button>
+    </form>
+  </div>
+
+  <!-- Lista de reviews -->
+  <div class="reviews-list">
+    <div *ngIf="loading && reviews.length === 0" class="loading">
+      Cargando revisiones...
+    </div>
+
+    <div *ngIf="!loading && reviews.length === 0" class="empty-state">
+      <p>No tienes revisiones sistemáticas aún</p>
+      <button class="btn-create-small" (click)="toggleCreateForm()">
+        Crear primera revisión
+      </button>
+    </div>
+
+    <div *ngFor="let review of reviews" class="review-card">
+      <div class="review-header">
+        <h3>{{ review.title }}</h3>
+        <span class="review-status" [ngClass]="'status-' + (review.status || 'draft')">
+          {{ review.status || 'Borrador' }}
+        </span>
+      </div>
+
+      <p class="review-description">{{ review.description }}</p>
+
+      <div class="review-meta">
+        <div class="meta-item">
+          <span class="label">Objetivo:</span>
+          <span>{{ review.objective }}</span>
+        </div>
+        <div *ngIf="review.scope" class="meta-item">
+          <span class="label">Alcance:</span>
+          <span>{{ review.scope }}</span>
+        </div>
+      </div>
+
+      <div class="review-actions">
+        <button class="btn-protocol" (click)="manageProtocol(review.id!)">📋 Protocolo</button>
+        <button class="btn-report" (click)="manageReport(review.id!)">📊 Reporte</button>
+        <button class="btn-view" (click)="viewDetails(review)">Ver detalles</button>
+        <button class="btn-edit" (click)="startEdit(review)">Editar</button>
+        <button class="btn-delete" (click)="deleteReview(review.id!)">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de detalles -->
+  <div *ngIf="showDetailPanel" class="detail-panel">
+    <div class="detail-header">
+      <h2>Detalles de la Revisión</h2>
+      <button class="btn-close" (click)="closeDetailPanel()">✕</button>
+    </div>
+
+    <div *ngIf="detailLoading" class="loading">
+      Cargando detalles...
+    </div>
+
+    <div *ngIf="!detailLoading && selectedReviewDetail" class="detail-content">
+      <div class="detail-field">
+        <label>Título:</label>
+        <p>{{ selectedReviewDetail.title }}</p>
+      </div>
+
+      <div class="detail-field">
+        <label>Descripción:</label>
+        <p>{{ selectedReviewDetail.description }}</p>
+      </div>
+
+      <div class="detail-field">
+        <label>Objetivo:</label>
+        <p>{{ selectedReviewDetail.objective }}</p>
+      </div>
+
+      <div class="detail-field">
+        <label>Área de trabajo:</label>
+        <p>{{ selectedReviewDetail.workField }}</p>
+      </div>
+
+      <div class="detail-field">
+        <label>Alcance:</label>
+        <p>{{ selectedReviewDetail.scope || 'No especificado' }}</p>
+      </div>
+
+      <div class="detail-field">
+        <label>Visibilidad pública:</label>
+        <p>{{ selectedReviewDetail.publicVisibility ? 'Sí' : 'No' }}</p>
+      </div>
+
+      <div class="detail-field" *ngIf="selectedReviewDetail.principalResearcher">
+        <label>Investigador Principal:</label>
+        <p>{{ selectedReviewDetail.principalResearcher.completeName || selectedReviewDetail.principalResearcher.userName }}</p>
+      </div>
+
+      <div class="detail-field" *ngIf="selectedReviewDetail.collaboratorResearchers && selectedReviewDetail.collaboratorResearchers.length > 0">
+        <label>Investigadores Colaboradores:</label>
+        <ul>
+          <li *ngFor="let collaborator of selectedReviewDetail.collaboratorResearchers">
+            {{ collaborator.completeName || collaborator.userName }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

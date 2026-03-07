@@ -1,0 +1,118 @@
+<div class="form-management-container">
+  <div class="header">
+    <h1>Gestión de Formularios</h1>
+    <button class="btn-back" (click)="goBack()">← Volver al Protocolo</button>
+  </div>
+
+  <div class="content-layout">
+    <!-- Lista de formularios -->
+    <div class="forms-section">
+      <div class="section-header">
+        <h2>Formularios</h2>
+        <button class="btn-create" (click)="toggleCreateForm()">
+          {{ showCreateForm ? '✕' : '+ Nuevo' }}
+        </button>
+      </div>
+
+      <!-- Formulario de creación -->
+      <div *ngIf="showCreateForm" class="create-form">
+        <form [formGroup]="formForm" (ngSubmit)="onCreateForm()">
+          <div class="form-group">
+            <label for="formType">Tipo de formulario *</label>
+            <select id="formType" formControlName="formType" class="form-select">
+              <option value="">Seleccionar...</option>
+              <option value="QUALITY">Evaluación de calidad</option>
+              <option value="EXTRACTION">Extracción de datos</option>
+            </select>
+            <span *ngIf="formForm.get('formType')?.invalid && formForm.get('formType')?.touched" class="error">
+              Selecciona un tipo de formulario
+            </span>
+          </div>
+
+          <div *ngIf="submitError" class="error-message">{{ submitError }}</div>
+
+          <button type="submit" class="btn-submit" [disabled]="formForm.invalid || loading">
+            {{ loading ? 'Guardando...' : 'Crear Formulario' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Lista -->
+      <div class="forms-list">
+        <div *ngIf="forms.length === 0 && !loading" class="empty-state">
+          No hay formularios creados
+        </div>
+
+        <div
+          *ngFor="let form of forms"
+          class="form-item"
+          [class.selected]="selectedFormId === form.id"
+          (click)="selectForm(form.id!)">
+          <div class="form-item-content">
+            <h3>Formulario de {{ form.formType === 'QUALITY' ? 'Calidad' : 'Extracción' }}</h3>
+            <span class="form-type-badge">{{ form.formType === 'QUALITY' ? 'Calidad' : 'Extracción' }}</span>
+          </div>
+          <button class="btn-delete-small" (click)="deleteForm(form.id!); $event.stopPropagation()">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campos del formulario seleccionado -->
+    <div class="fields-section">
+      <div *ngIf="!selectedFormId" class="empty-selection">
+        Selecciona un formulario para ver sus campos
+      </div>
+
+      <div *ngIf="selectedFormId">
+        <div class="section-header">
+          <h2>Campos del formulario</h2>
+          <button class="btn-create" (click)="toggleFieldForm()">
+            {{ showFieldForm ? '✕' : '+ Agregar campo' }}
+          </button>
+        </div>
+
+        <!-- Formulario de campo -->
+        <div *ngIf="showFieldForm" class="create-form">
+          <form [formGroup]="fieldForm" (ngSubmit)="onAddField()">
+            <div class="form-group">
+              <label for="fieldName">Nombre del campo *</label>
+              <input id="fieldName" formControlName="fieldName" type="text" class="form-input" />
+              <span *ngIf="fieldForm.get('fieldName')?.invalid && fieldForm.get('fieldName')?.touched" class="error">
+                Mínimo 2 caracteres
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label for="fieldType">Tipo de campo *</label>
+              <select id="fieldType" formControlName="fieldType" class="form-select">
+                <option *ngFor="let option of fieldTypeOptions" [value]="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn-submit" [disabled]="fieldForm.invalid || loading">
+              {{ loading ? 'Añadiendo...' : 'Añadir Campo' }}
+            </button>
+          </form>
+        </div>
+
+        <!-- Lista de campos -->
+        <div class="fields-list">
+          <div *ngIf="formFields.length === 0 && !loading" class="empty-state">
+            No hay campos definidos
+          </div>
+
+          <div *ngFor="let field of formFields" class="field-item">
+            <div class="field-icon">📝</div>
+            <div class="field-info">
+              <h4>{{ field.fieldName }}</h4>
+              <span class="field-type">{{ field.fieldType }}</span>
+            </div>
+            <button class="btn-delete-small" (click)="deleteField(field.id!)">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

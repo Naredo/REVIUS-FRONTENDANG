@@ -1,0 +1,53 @@
+<div class="admin-container">
+
+  <h2>Panel de Administración</h2>
+
+  <!-- CARGANDO -->
+  <div *ngIf="!(users$ | async)" class="loading">
+    Cargando usuarios...
+  </div>
+
+  <!-- TABLA -->
+  <table *ngIf="users$ | async as users" class="admin-table">
+
+    <!-- SIN DATOS -->
+    <caption *ngIf="users.length === 0">
+      No hay usuarios registrados.
+    </caption>
+
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Usuario</th>
+        <th>Email</th>
+        <th>Admin</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngFor="let user of users">
+        <td>{{ user.id }}</td>
+        <td>{{ user.userName }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.isAdmin ? 'Sí' : 'No' }}</td>
+
+        <td class="actions">
+          <button (click)="toggleAuthority(user)">
+            Cambiar permisos
+          </button>
+
+          <button class="warning" (click)="deleteProfile(user)">
+            Eliminar perfil
+          </button>
+
+          <button class="danger" (click)="deleteUser(user)">
+            Eliminar usuario
+          </button>
+        </td>
+      </tr>
+    </tbody>
+
+  </table>
+
+</div>

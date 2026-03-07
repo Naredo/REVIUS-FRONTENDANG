@@ -1,0 +1,133 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="navbar-brand">
+      <button
+    class="brand-button"
+    routerLink="/reviews"
+  >
+    REVIUS
+  </button>
+    </div>
+
+    <!-- Botón de perfil -->
+    <div *ngIf="authService.isLoggedIn()" class="profile-button-container">
+      <button class="profile-button" (click)="openProfileModal()">
+        👤 Perfil
+      </button>
+    </div>
+    <button
+        *ngIf="authService.isLoggedIn() && authService.isAdmin()"
+        class="admin-button"
+        (click)="goToAdmin()"
+      >
+          ⚙️ Administración
+</button>
+  </div>
+
+  <!-- Modal de Perfil -->
+  <div
+    *ngIf="showProfileModal"
+    class="modal-overlay"
+    (click)="closeProfileModal()"
+  >
+    <div class="modal-content" (click)="$event.stopPropagation()">
+
+      <!-- Logout -->
+      <button
+        class="logout-icon"
+        title="Cerrar sesión"
+        (click)="logout()"
+      >
+        Cerrar sesión
+      </button>
+
+      <p class="modal-title">Mi Perfil</p>
+
+      <!-- Cargando -->
+      <div *ngIf="loadingProfile" class="loading-spinner">
+        Cargando perfil...
+      </div>
+
+      <!-- FORMULARIO -->
+      <form
+        *ngIf="!loadingProfile && userProfile"
+        [formGroup]="profileForm"
+        class="profile-info"
+      >
+
+        <!-- USERNAME -->
+        <div class="profile-field">
+          <label>Nombre de usuario</label>
+          <input type="text" formControlName="userName" />
+        </div>
+
+        <!-- NOMBRE -->
+        <div class="profile-field">
+          <label>Nombre completo</label>
+          <input type="text" formControlName="name" />
+        </div>
+
+        <!-- EMAIL -->
+        <div class="profile-field">
+          <label>Email</label>
+          <input type="email" formControlName="email" />
+        </div>
+
+        <!-- CAMPO DE TRABAJO -->
+        <div class="profile-field">
+          <label>Campo de trabajo</label>
+          <input type="text" formControlName="workField" />
+        </div>
+
+        <!-- INSTITUCIÓN -->
+        <div class="profile-field">
+          <label>Institución</label>
+          <input type="text" formControlName="institution" />
+        </div>
+
+        <hr />
+
+        <!-- CONTRASEÑAS -->
+        <div class="profile-field">
+          <label>Contraseña actual</label>
+          <input
+            type="password"
+            formControlName="oldPassword"
+            placeholder="Necesaria para cambios sensibles"
+          />
+        </div>
+
+        <div class="profile-field">
+          <label>Nueva contraseña</label>
+          <input
+            type="password"
+            formControlName="newPassword"
+            placeholder="Dejar vacío si no quieres cambiarla"
+          />
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="profile-actions">
+          <button
+            type="button"
+            class="save-button"
+            (click)="saveProfile()"
+            [disabled]="savingProfile"
+          >
+            Guardar
+          </button>
+
+          <button
+            type="button"
+            class="cancel-button"
+            (click)="cancelEdit()"
+            [disabled]="savingProfile"
+          >
+            Cancelar
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</nav>
