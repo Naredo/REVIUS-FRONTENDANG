@@ -43,4 +43,33 @@ export class MainQuestionService {
       { headers: this.getHeaders() }
     );
   }
+
+  findAll(): Observable<MainQuestionDTO[]> {
+    return this.http.get<MainQuestionDTO[]>(
+      `${this.API_URL}all`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  findOne(id: number): Observable<MainQuestionDTO> {
+    return this.http.get<MainQuestionDTO>(
+      `${this.API_URL}${id}`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  update(mainQuestion: MainQuestionDTO): Observable<MainQuestionDTO> {
+    return this.http.put<MainQuestionDTO>(
+      `${this.API_URL}${mainQuestion.id}/edit`,
+      mainQuestion,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(
+      `${this.API_URL}${id}/delete`,
+      { headers: this.getHeaders(), responseType: 'text' as 'json' }
+    );
+  }
 }

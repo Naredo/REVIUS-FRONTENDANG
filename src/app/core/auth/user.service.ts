@@ -84,6 +84,26 @@ export class UserService {
       dto
     );
   }
+
+  findByEmail(email: string): Observable<UserDTO> {
+    const encodedEmail = encodeURIComponent(email);
+    return this.http.get<UserDTO>(
+      `${this.API_URL}email/${encodedEmail}`
+    );
+  }
+
+  exists(userId: number): Observable<boolean> {
+    return this.http.get<boolean>(
+      `${this.API_URL}${userId}/exists`
+    );
+  }
+
+  findEmailsByUserIds(userIds: number[]): Observable<string[]> {
+    return this.http.post<string[]>(
+      `${this.API_URL}emails-by-ids`,
+      userIds
+    );
+  }
 }
 
 

@@ -104,6 +104,7 @@
       <button 
         type="submit" 
         class="btn-submit"
+        [class.btn-submit-edit]="isEditing"
         [disabled]="reviewForm.invalid || loading">
         {{ loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar cambios' : 'Crear Revisión') }}
       </button>
@@ -148,7 +149,7 @@
         <button class="btn-protocol" (click)="manageProtocol(review.id!)">📋 Protocolo</button>
         <button class="btn-report" (click)="manageReport(review.id!)">📊 Reporte</button>
         <button class="btn-view" (click)="viewDetails(review)">Ver detalles</button>
-        <button class="btn-edit" (click)="startEdit(review)">Editar</button>
+        <button class="btn-edit review-edit-button" (click)="startEdit(review)">Editar</button>
         <button class="btn-delete" (click)="deleteReview(review.id!)">Eliminar</button>
       </div>
     </div>
@@ -208,6 +209,41 @@
             {{ collaborator.completeName || collaborator.userName }}
           </li>
         </ul>
+      </div>
+
+      <div class="detail-field collaborator-field">
+        <label>Añadir colaborador por email:</label>
+        <div class="collaborator-search-row">
+          <input
+            type="email"
+            class="form-input"
+            [(ngModel)]="collaboratorEmail"
+            placeholder="usuario@ejemplo.com"
+            (keyup.enter)="searchCollaboratorByEmail()"
+          />
+          <button
+            class="btn-view"
+            (click)="searchCollaboratorByEmail()"
+            [disabled]="collaboratorSearchLoading || !collaboratorEmail.trim()">
+            {{ collaboratorSearchLoading ? 'Buscando...' : 'Buscar' }}
+          </button>
+        </div>
+
+        <p *ngIf="collaboratorSearchError" class="error-message">{{ collaboratorSearchError }}</p>
+        <p *ngIf="collaboratorActionMessage" class="success-message">{{ collaboratorActionMessage }}</p>
+
+        <div *ngIf="collaboratorSearchResult" class="collaborator-result">
+          <span>
+            {{ collaboratorSearchResult.completeName || collaboratorSearchResult.userName }}
+            ({{ collaboratorSearchResult.email }})
+          </span>
+          <button
+            class="btn-protocol"
+            (click)="addCollaboratorToSelectedReview()"
+            [disabled]="collaboratorAddLoading">
+            {{ collaboratorAddLoading ? 'Añadiendo...' : 'Añadir colaborador' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>

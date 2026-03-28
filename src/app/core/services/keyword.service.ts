@@ -12,6 +12,9 @@ export class KeywordService {
   private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:9003/api/review/keyword/'
     : 'http://review-service:9003/api/review/keyword/';
+  private readonly PROTOCOL_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:9003/api/review/protocol/'
+    : 'http://review-service:9003/api/review/protocol/';
   private isBrowser: boolean;
 
   constructor(
@@ -68,7 +71,7 @@ export class KeywordService {
 
   deleteFromProtocol(keyword: KeywordDTO, protocolId: number): Observable<void> {
     return this.http.delete<void>(
-      `${this.API_URL}${keyword.id}/protocol/${protocolId}/delete`,
+      `${this.PROTOCOL_API_URL}${protocolId}/delete-keyword?keywordId=${keyword.id}`,
       { headers: this.getHeaders(), responseType: 'text' as 'json' }
     );
   }

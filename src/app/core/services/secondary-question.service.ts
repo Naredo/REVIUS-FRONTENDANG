@@ -43,4 +43,33 @@ export class SecondaryQuestionService {
       { headers: this.getHeaders(), responseType: 'text' as 'json' }
     );
   }
+
+  findAll(): Observable<SecondaryQuestionDTO[]> {
+    return this.http.get<SecondaryQuestionDTO[]>(
+      `${this.API_URL}all`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  findOne(id: number): Observable<SecondaryQuestionDTO> {
+    return this.http.get<SecondaryQuestionDTO>(
+      `${this.API_URL}${id}`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  update(secondaryQuestion: SecondaryQuestionDTO): Observable<SecondaryQuestionDTO> {
+    return this.http.put<SecondaryQuestionDTO>(
+      `${this.API_URL}${secondaryQuestion.id}/edit`,
+      secondaryQuestion,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(
+      `${this.API_URL}${id}/delete`,
+      { headers: this.getHeaders(), responseType: 'text' as 'json' }
+    );
+  }
 }

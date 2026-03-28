@@ -4,6 +4,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ProtocolDTO } from '../models/protocol-dto';
 import { StudySelectionCriterionDTO } from '../models/study-selection-criterion-dto';
+import { FormFieldDTO } from '../models/form-field-dto';
 
 @Injectable({
   providedIn: 'root'
@@ -76,7 +77,14 @@ export class ProtocolService {
 
   findSelectionCriterionsByProtocolId(protocolId: number): Observable<StudySelectionCriterionDTO[]> {
     return this.http.get<StudySelectionCriterionDTO[]>(
-      `${this.API_URL}${protocolId}/selection-criterions`,
+      `${this.API_URL}${protocolId}/get-selection-criteria`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  findFormData(protocolId: number, formType: 'QUALITY' | 'EXTRACTION'): Observable<FormFieldDTO[]> {
+    return this.http.get<FormFieldDTO[]>(
+      `${this.API_URL}${protocolId}/get-form-data/${formType}`,
       { headers: this.getHeaders() }
     );
   }

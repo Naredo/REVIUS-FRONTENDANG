@@ -12,6 +12,9 @@ export class SourceService {
   private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:9003/api/review/data-source/'
     : 'http://review-service:9003/api/review/data-source/';
+  private readonly PROTOCOL_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:9003/api/review/protocol/'
+    : 'http://review-service:9003/api/review/protocol/';
   private isBrowser: boolean;
 
   constructor(
@@ -76,7 +79,7 @@ export class SourceService {
 
   deleteFromProtocol(sourceId: number, protocolId: number): Observable<void> {
     return this.http.delete<void>(
-      `${this.API_URL}${sourceId}/protocol/${protocolId}/delete`,
+      `${this.PROTOCOL_API_URL}${protocolId}/delete-source?sourceId=${sourceId}`,
       { headers: this.getHeaders(), responseType: 'text' as 'json' }
     );
   }

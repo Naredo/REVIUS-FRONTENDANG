@@ -5,6 +5,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 import { ReportService } from '../../core/services/report.service';
 import { ReportDTO } from '../../core/models/report-dto';
+import { ReviewService } from '../../reviews/review.service';
 
 @Component({
   selector: 'app-report',
@@ -25,6 +26,7 @@ export class ReportComponent implements OnInit {
 
   constructor(
     private reportService: ReportService,
+    private reviewService: ReviewService,
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
@@ -53,9 +55,39 @@ export class ReportComponent implements OnInit {
     if (!this.slrId) return;
     
     this.loading = true;
-    // Intentar cargar un reporte existente para esta SLR
-    // Nota: Necesitarías un endpoint en el backend que devuelva el reporte por slrId
-    this.loading = false;
+    this.reviewService.getSLRById(this.slrId).subscribe({
+      next: (slr) => {
+        if (slr.report && slr.report.id) {
+          this.reportId = slr.report.id;
+          this.reportService.findOne(this.reportId).subscribe({
+            next: (report) => {
+              this.existingReport = report;
+              this.reportForm.patchValue({
+                resume: report.resume || '',
+                conclusions: report.conclusions || '',
+                analysis: report.analysis || ''
+              });
+              this.loading = false;
+              this.cdr.markForCheck();
+            },
+            error: (err) => {
+              console.error('Error cargando reporte:', err);
+              this.loading = false;
+              this.cdr.markForCheck();
+            }
+          });
+          return;
+        }
+
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error cargando SLR:', err);
+        this.loading = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   onSubmitReport() {

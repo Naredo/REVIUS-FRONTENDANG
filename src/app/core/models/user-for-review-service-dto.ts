@@ -1,5 +1,6 @@
 export interface UserForReviewServiceDTO {
   id: number;
-  username: string;
+  userName?: string;
+  completeName?: string;
   email?: string;
 }

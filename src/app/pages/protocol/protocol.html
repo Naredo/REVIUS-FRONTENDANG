@@ -158,13 +158,90 @@
 
     <div class="questions-list">
       <div *ngFor="let question of mainQuestions" class="question-card">
-        <h4>{{ question.question }}</h4>
+        <div class="question-header-row">
+          <h4 *ngIf="editingMainQuestionId !== question.id">{{ question.question }}</h4>
+          <input
+            *ngIf="editingMainQuestionId === question.id"
+            type="text"
+            [(ngModel)]="editingMainQuestionText"
+            class="form-input"
+            placeholder="Editar pregunta principal"
+          />
+
+          <div class="question-actions">
+            <button
+              *ngIf="editingMainQuestionId !== question.id"
+              class="btn-edit-question"
+              (click)="startEditMainQuestion(question)">
+              Editar
+            </button>
+            <button
+              *ngIf="editingMainQuestionId === question.id"
+              class="btn-save-question"
+              (click)="saveMainQuestion(question)"
+              [disabled]="!editingMainQuestionText.trim()">
+              Guardar
+            </button>
+            <button
+              *ngIf="editingMainQuestionId === question.id"
+              class="btn-cancel-question"
+              (click)="cancelEditMainQuestion()">
+              Cancelar
+            </button>
+            <button
+              class="btn-delete-question"
+              (click)="removeMainQuestion(question)">
+              Eliminar
+            </button>
+          </div>
+        </div>
         
+        <!-- Lista de preguntas secundarias existentes -->
+        <div *ngIf="question.secondaryQuestions && question.secondaryQuestions.length > 0" class="secondary-questions-list">
+          <div *ngFor="let secQuestion of question.secondaryQuestions" class="secondary-question-item">
+            <span *ngIf="editingSecondaryQuestionId !== secQuestion.id">• {{ secQuestion.question }}</span>
+            <input
+              *ngIf="editingSecondaryQuestionId === secQuestion.id"
+              type="text"
+              [(ngModel)]="editingSecondaryQuestionText"
+              class="form-input"
+              placeholder="Editar pregunta secundaria"
+            />
+
+            <div class="question-actions">
+              <button
+                *ngIf="editingSecondaryQuestionId !== secQuestion.id"
+                class="btn-edit-question"
+                (click)="startEditSecondaryQuestion(secQuestion)">
+                Editar
+              </button>
+              <button
+                *ngIf="editingSecondaryQuestionId === secQuestion.id"
+                class="btn-save-question"
+                (click)="saveSecondaryQuestion(secQuestion, question.id!)"
+                [disabled]="!editingSecondaryQuestionText.trim()">
+                Guardar
+              </button>
+              <button
+                *ngIf="editingSecondaryQuestionId === secQuestion.id"
+                class="btn-cancel-question"
+                (click)="cancelEditSecondaryQuestion()">
+                Cancelar
+              </button>
+              <button
+                class="btn-delete-question"
+                (click)="removeSecondaryQuestion(secQuestion)">
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="secondary-questions-section">
           <div class="add-item-form">
             <input
               type="text"
-              [(ngModel)]="newSecondaryQuestion"
+              [(ngModel)]="newSecondaryQuestions[question.id!]"
               placeholder="Pregunta secundaria"
               class="form-input"
               (keyup.enter)="addSecondaryQuestion(question.id!)"
@@ -172,7 +249,7 @@
             <button 
               class="btn-add-small" 
               (click)="addSecondaryQuestion(question.id!)"
-              [disabled]="!newSecondaryQuestion.trim()">
+              [disabled]="!(newSecondaryQuestions[question.id!] || '').trim()">
               + Añadir Secundaria
             </button>
           </div>
@@ -191,19 +268,25 @@
 
     <h3>Fuentes Bibliográficas</h3>
     <div class="add-item-form">
+      <select [(ngModel)]="newSourceName" class="form-select">
+        <option value="" disabled>Selecciona una opción</option>
+        <option *ngFor="let option of bibliographicSourceOptions" [value]="option">{{ option }}</option>
+        <option [value]="otherBibliographicSourceValue">Otro</option>
+      </select>
       <input
+        *ngIf="isOtherBibliographicSourceSelected"
         type="text"
-        [(ngModel)]="newSourceName"
-        placeholder="Nombre de la fuente (ej: IEEE Xplore)"
+        [(ngModel)]="newSourceNameOther"
+        placeholder="Especifica otra fuente bibliográfica"
         class="form-input"
       />
       <input
         type="text"
         [(ngModel)]="newSourceUrl"
-        placeholder="URL (opcional)"
+        placeholder=""
         class="form-input"
       />
-      <button class="btn-add" (click)="addSource()" [disabled]="!newSourceName.trim() || !protocolId">
+      <button class="btn-add" (click)="addSource()" [disabled]="!canAddBibliographicSource">
         + Añadir Fuente
       </button>
     </div>
@@ -231,8 +314,8 @@
         class="form-input"
       />
       <select [(ngModel)]="newSnowballingType" class="form-select">
-        <option value="FORWARD">Forward</option>
-        <option value="BACKWARD">Backward</option>
+        <option value="FORWARD">Hacia adelante</option>
+        <option value="BACKWARD">Hacia atrás</option>
       </select>
       <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
         + Añadir Snowballing
@@ -281,37 +364,234 @@
         No hay criterios de selección de estudios añadidos
       </div>
     </div>
-
-    <h3>Criterios de Selección de Fuentes</h3>
-    <div class="add-item-form">
-      <input
-        type="text"
-        [(ngModel)]="newSourcesCriterion"
-        placeholder="Nuevo criterio de selección de fuente"
-        class="form-input"
-        (keyup.enter)="addSourcesCriterion()"
-      />
-      <button class="btn-add" (click)="addSourcesCriterion()" [disabled]="!newSourcesCriterion.trim() || !protocolId">
-        + Añadir
-      </button>
-    </div>
-
-    <div class="items-list">
-      <div *ngFor="let criterion of sourcesCriteria" class="item-card">
-        <span>{{ criterion.criterion }}</span>
-      </div>
-
-      <div *ngIf="sourcesCriteria.length === 0 && protocolId" class="empty-state">
-        No hay criterios de selección de fuentes añadidos
-      </div>
-    </div>
   </div>
 
   <!-- Sección: Formularios -->
   <div *ngIf="currentSection === 'forms'" class="section">
     <h2>Formularios de Calidad y Extracción</h2>
-    <div class="info-message">
-      Esta sección estará disponible próximamente para configurar formularios personalizados.
+
+    <div *ngIf="!protocolId" class="info-message">
+      Primero debes crear el protocolo en la sección "Información Básica"
+    </div>
+
+    <div *ngIf="protocolId" class="forms-wrapper">
+      <div *ngIf="formsMessage" class="info-message">
+        {{ formsMessage }}
+      </div>
+
+      <div class="forms-columns">
+        <div class="form-builder-card">
+          <h3>Formulario de Calidad</h3>
+
+          <div class="add-item-form">
+            <input
+              type="text"
+              [(ngModel)]="newQualityFieldName"
+              placeholder="Nombre del campo"
+              class="form-input"
+            />
+            <select [(ngModel)]="newQualityFieldType" class="form-select">
+              <option *ngFor="let option of fieldTypeOptions" [value]="option.value">{{ option.label }}</option>
+            </select>
+            <button class="btn-add" (click)="addQualityField()" [disabled]="!newQualityFieldName.trim()">
+              + Campo
+            </button>
+          </div>
+
+          <div class="items-list">
+            <div *ngFor="let field of qualityFormFields; let i = index" class="item-card">
+              <div>
+                <strong>{{ field.fieldName }}</strong>
+                <span class="badge">{{ field.fieldType }}</span>
+              </div>
+              <button class="btn-remove" (click)="removeQualityField(i)">✕</button>
+            </div>
+
+            <div *ngIf="qualityFormFields.length === 0" class="empty-state">
+              No hay campos en el formulario de calidad
+            </div>
+          </div>
+        </div>
+
+        <div class="form-builder-card">
+          <h3>Formulario de Extracción</h3>
+
+          <div class="add-item-form">
+            <input
+              type="text"
+              [(ngModel)]="newExtractionFieldName"
+              placeholder="Nombre del campo"
+              class="form-input"
+            />
+            <select [(ngModel)]="newExtractionFieldType" class="form-select">
+              <option *ngFor="let option of fieldTypeOptions" [value]="option.value">{{ option.label }}</option>
+            </select>
+            <button class="btn-add" (click)="addExtractionField()" [disabled]="!newExtractionFieldName.trim()">
+              + Campo
+            </button>
+          </div>
+
+          <div class="items-list">
+            <div *ngFor="let field of extractionFormFields; let i = index" class="item-card">
+              <div>
+                <strong>{{ field.fieldName }}</strong>
+                <span class="badge">{{ field.fieldType }}</span>
+              </div>
+              <button class="btn-remove" (click)="removeExtractionField(i)">✕</button>
+            </div>
+
+            <div *ngIf="extractionFormFields.length === 0" class="empty-state">
+              No hay campos en el formulario de extracción
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="btn-submit"
+        (click)="saveFormsDefinition()"
+        [disabled]="formsLoading">
+        {{ formsLoading ? 'Guardando formularios...' : 'Guardar definición de formularios' }}
+      </button>
+
+      <div class="forms-columns apply-forms-columns">
+        <div class="form-apply-card">
+          <h3>Aplicar formulario de calidad</h3>
+
+          <div class="form-group">
+            <label>Artículo</label>
+            <input
+              type="text"
+              [(ngModel)]="qualityArticleReference"
+              placeholder="Identificador o título del artículo"
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Decisión</label>
+            <select [(ngModel)]="qualityDecision" class="form-select">
+              <option value="INCLUDE">Incluir</option>
+              <option value="EXCLUDE">Excluir</option>
+            </select>
+          </div>
+
+          <div class="form-group" *ngFor="let field of qualityFormFields">
+            <label>{{ field.fieldName }}</label>
+            <ng-container [ngSwitch]="field.fieldType">
+              <select
+                *ngSwitchCase="'PICKONELIST'"
+                class="form-select"
+                [(ngModel)]="qualityAnswers[field.fieldName]">
+                <option value="" disabled hidden [selected]="!qualityAnswers[field.fieldName]">Selecciona una opción</option>
+                <option *ngFor="let option of yesNoOptions" [value]="option.value">{{ option.label }}</option>
+              </select>
+
+              <select
+                *ngSwitchCase="'NUMBERSCALE'"
+                class="form-select"
+                [(ngModel)]="qualityAnswers[field.fieldName]">
+                <option value="" disabled hidden [selected]="!qualityAnswers[field.fieldName]">Selecciona una puntuación</option>
+                <option *ngFor="let option of numericScaleOptions" [value]="option">{{ option }}</option>
+              </select>
+
+              <select
+                *ngSwitchCase="'LABELEDSCALE'"
+                class="form-select"
+                [(ngModel)]="qualityAnswers[field.fieldName]">
+                <option value="" disabled hidden [selected]="!qualityAnswers[field.fieldName]">Selecciona una valoración</option>
+                <option *ngFor="let option of labeledScaleOptions" [value]="option.value">{{ option.label }}</option>
+              </select>
+
+              <input
+                *ngSwitchDefault
+                type="text"
+                class="form-input"
+                [placeholder]="getFieldPlaceholder(field.fieldType)"
+                [(ngModel)]="qualityAnswers[field.fieldName]"
+              />
+            </ng-container>
+          </div>
+
+          <button class="btn-submit" type="button" (click)="applyQualityForm()">
+            Aplicar evaluación de calidad
+          </button>
+
+          <div class="items-list applied-list">
+            <div *ngFor="let item of qualityAppliedEntries" class="item-card">
+              <div>
+                <strong>{{ item.articleReference }}</strong>
+                <span class="badge">{{ item.decision === 'INCLUDE' ? 'Incluido' : 'Excluido' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-apply-card">
+          <h3>Aplicar formulario de extracción</h3>
+
+          <div class="form-group">
+            <label>Artículo</label>
+            <input
+              type="text"
+              [(ngModel)]="extractionArticleReference"
+              placeholder="Identificador o título del artículo"
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-group" *ngFor="let field of extractionFormFields">
+            <label>{{ field.fieldName }}</label>
+            <ng-container [ngSwitch]="field.fieldType">
+              <select
+                *ngSwitchCase="'PICKONELIST'"
+                class="form-select"
+                [(ngModel)]="extractionAnswers[field.fieldName]">
+                <option value="" disabled hidden [selected]="!extractionAnswers[field.fieldName]">Selecciona una opción</option>
+                <option *ngFor="let option of yesNoOptions" [value]="option.value">{{ option.label }}</option>
+              </select>
+
+              <select
+                *ngSwitchCase="'NUMBERSCALE'"
+                class="form-select"
+                [(ngModel)]="extractionAnswers[field.fieldName]">
+                <option value="" disabled hidden [selected]="!extractionAnswers[field.fieldName]">Selecciona una puntuación</option>
+                <option *ngFor="let option of numericScaleOptions" [value]="option">{{ option }}</option>
+              </select>
+
+              <select
+                *ngSwitchCase="'LABELEDSCALE'"
+                class="form-select"
+                [(ngModel)]="extractionAnswers[field.fieldName]">
+                <option value="" disabled hidden [selected]="!extractionAnswers[field.fieldName]">Selecciona una valoración</option>
+                <option *ngFor="let option of labeledScaleOptions" [value]="option.value">{{ option.label }}</option>
+              </select>
+
+              <input
+                *ngSwitchDefault
+                type="text"
+                class="form-input"
+                [placeholder]="getFieldPlaceholder(field.fieldType)"
+                [(ngModel)]="extractionAnswers[field.fieldName]"
+              />
+            </ng-container>
+          </div>
+
+          <button class="btn-submit" type="button" (click)="applyExtractionForm()">
+            Aplicar extracción de datos
+          </button>
+
+          <div class="items-list applied-list">
+            <div *ngFor="let item of extractionAppliedEntries" class="item-card">
+              <div>
+                <strong>{{ item.articleReference }}</strong>
+                <span class="badge">Extracción registrada</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

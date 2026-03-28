@@ -1,8 +1,10 @@
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { ProtocolService } from '../../core/services/protocol.service';
 import { KeywordService } from '../../core/services/keyword.service';
 import { MainQuestionService } from '../../core/services/main-question.service';
@@ -11,8 +13,7 @@ import { SourceService } from '../../core/services/source.service';
 import { SnowballingService } from '../../core/services/snowballing.service';
 import { StudySelectionCriterionService } from '../../core/services/study-selection-criterion.service';
 import { SourcesSelectionCriterionService } from '../../core/services/sources-selection-criterion.service';
-import { FormService } from '../../core/services/form.service';
-import { FormFieldService } from '../../core/services/form-field.service';
+import { ReviewService } from '../../reviews/review.service';
 import { ProtocolDTO } from '../../core/models/protocol-dto';
 import { KeywordDTO } from '../../core/models/keyword-dto';
 import { MainQuestionDTO } from '../../core/models/main-question-dto';
@@ -21,6 +22,7 @@ import { SourceDTO } from '../../core/models/source-dto';
 import { SnowballingDTO } from '../../core/models/snowballing-dto';
 import { StudySelectionCriterionDTO } from '../../core/models/study-selection-criterion-dto';
 import { SourcesSelectionCriterionDTO } from '../../core/models/sources-selection-criterion-dto';
+import { FormFieldDTO } from '../../core/models/form-field-dto';
 
 @Component({
   selector: 'app-protocol',
@@ -32,6 +34,14 @@ import { SourcesSelectionCriterionDTO } from '../../core/models/sources-selectio
 export class ProtocolComponent implements OnInit {
 
   protocolForm: FormGroup;
+  bibliographicSourceOptions: string[] = [
+    'url',
+    'articulo',
+    'libro',
+    'tesis y trabajos academicos',
+    'informes y documentos oficiales'
+  ];
+  otherBibliographicSourceValue = 'otro';
   slrId: number = 0;
   protocolId?: number;
   loading = false;
@@ -49,14 +59,60 @@ export class ProtocolComponent implements OnInit {
   // Formularios auxiliares
   newKeyword: string = '';
   newMainQuestion: string = '';
-  newSecondaryQuestion: string = '';
+  newSecondaryQuestions: Record<number, string> = {};
   selectedMainQuestionId?: number;
+  editingMainQuestionId?: number;
+  editingMainQuestionText: string = '';
+  editingSecondaryQuestionId?: number;
+  editingSecondaryQuestionText: string = '';
   newSourceName: string = '';
+  newSourceNameOther: string = '';
   newSourceUrl: string = '';
   newSnowballingSource: string = '';
   newSnowballingType: 'FORWARD' | 'BACKWARD' = 'FORWARD';
   newStudyCriterion: string = '';
   newSourcesCriterion: string = '';
+
+  qualityFormFields: FormFieldDTO[] = [];
+  extractionFormFields: FormFieldDTO[] = [];
+  newQualityFieldName = '';
+  newExtractionFieldName = '';
+  newQualityFieldType: FormFieldDTO['fieldType'] = 'TEXT';
+  newExtractionFieldType: FormFieldDTO['fieldType'] = 'TEXT';
+  formsLoading = false;
+  formsMessage = '';
+
+  qualityArticleReference = '';
+  extractionArticleReference = '';
+  qualityDecision: 'INCLUDE' | 'EXCLUDE' = 'INCLUDE';
+  qualityAnswers: Record<string, string> = {};
+  extractionAnswers: Record<string, string> = {};
+  qualityAppliedEntries: Array<{ articleReference: string; decision: 'INCLUDE' | 'EXCLUDE'; answers: Record<string, string>; createdAt: string }> = [];
+  extractionAppliedEntries: Array<{ articleReference: string; answers: Record<string, string>; createdAt: string }> = [];
+
+  fieldTypeOptions: Array<{ value: FormFieldDTO['fieldType']; label: string }> = [
+    { value: 'TEXT', label: 'Texto libre' },
+    { value: 'PICKONELIST', label: 'Selección única' },
+    { value: 'PICKMANYLIST', label: 'Selección múltiple' },
+    { value: 'NUMBERSCALE', label: 'Escala numérica' },
+    { value: 'LABELEDSCALE', label: 'Escala etiquetada' }
+  ];
+
+  yesNoOptions: Array<{ value: string; label: string }> = [
+    { value: 'true', label: 'Sí' },
+    { value: 'false', label: 'No' }
+  ];
+
+  numericScaleOptions: number[] = Array.from({ length: 10 }, (_, index) => index + 1);
+
+  labeledScaleOptions: Array<{ value: string; label: string }> = [
+    { value: '0', label: '0 - Muy deficiente' },
+    { value: '1', label: '1 - Deficiente' },
+    { value: '2', label: '2 - Aceptable' },
+    { value: '3', label: '3 - Bueno' },
+    { value: '4', label: '4 - Muy bueno' },
+    { value: '5', label: '5 - Excelente' }
+  ];
 
   private isBrowser: boolean;
 
@@ -69,8 +125,7 @@ export class ProtocolComponent implements OnInit {
     private snowballingService: SnowballingService,
     private studySelectionCriterionService: StudySelectionCriterionService,
     private sourcesSelectionCriterionService: SourcesSelectionCriterionService,
-    private formService: FormService,
-    private formFieldService: FormFieldService,
+    private reviewService: ReviewService,
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
@@ -100,13 +155,275 @@ export class ProtocolComponent implements OnInit {
     if (!this.slrId) return;
     
     this.loading = true;
-    // Aquí cargarías el protocolo existente si ya existe
-    // Por ahora, solo preparamos para crear uno nuevo
-    this.loading = false;
+    
+    // Obtener el SLR para verificar si tiene un protocolo asociado
+    this.reviewService.getSLRById(this.slrId).subscribe({
+      next: (slr) => {
+        if (slr.protocol && slr.protocol.id) {
+          // Si el SLR tiene un protocolo, cargarlo
+          this.protocolId = slr.protocol.id;
+          this.protocolService.findOne(this.protocolId).subscribe({
+            next: (protocol) => {
+              // Cargar los datos del formulario
+              this.protocolForm.patchValue({
+                sourcesSearchMethods: protocol.sourcesSearchMethods || '',
+                studiesTypesDefinition: protocol.studiesTypesDefinition || '',
+                studiesInitialSelection: protocol.studiesInitialSelection || '',
+                studiesQualityEvaluation: protocol.studiesQualityEvaluation || ''
+              });
+              
+              // Cargar las listas de entidades
+              this.keywords = protocol.keywords ?? [];
+              this.mainQuestions = protocol.mainQuestions ?? [];
+              this.sources = protocol.sources ?? [];
+              this.studyCriteria = protocol.studySelectionCriterions ?? [];
+              this.sourcesCriteria = protocol.sourcesSelectionCriterions ?? [];
+
+              this.loadFormDefinitions();
+              this.loadAppliedFormEntries();
+              
+              this.loading = false;
+              this.cdr.markForCheck();
+            },
+            error: (err) => {
+              console.error('Error cargando protocolo:', err);
+              this.loading = false;
+            }
+          });
+        } else {
+          // No hay protocolo todavía, preparar para crear uno nuevo
+          this.loading = false;
+        }
+      },
+      error: (err) => {
+        console.error('Error cargando SLR:', err);
+        this.loading = false;
+      }
+    });
   }
 
   changeSection(section: 'basic' | 'keywords' | 'questions' | 'sources' | 'criteria' | 'forms') {
     this.currentSection = section;
+
+    if (section === 'forms' && this.protocolId) {
+      this.loadFormDefinitions();
+      this.loadAppliedFormEntries();
+    }
+  }
+
+  private loadFormDefinitions() {
+    if (!this.protocolId) return;
+
+    this.formsLoading = true;
+    this.formsMessage = '';
+
+    forkJoin({
+      quality: this.protocolService.findFormData(this.protocolId, 'QUALITY'),
+      extraction: this.protocolService.findFormData(this.protocolId, 'EXTRACTION')
+    }).subscribe({
+      next: ({ quality, extraction }) => {
+        this.qualityFormFields = quality ?? [];
+        this.extractionFormFields = extraction ?? [];
+        this.formsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error cargando formularios:', err);
+        this.formsLoading = false;
+        this.formsMessage = 'No se pudieron cargar los campos de los formularios';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  addQualityField() {
+    const name = this.newQualityFieldName.trim();
+    if (!name) return;
+
+    if (this.qualityFormFields.some(field => field.fieldName.toLowerCase() === name.toLowerCase())) {
+      this.formsMessage = 'Ya existe un campo de calidad con ese nombre';
+      return;
+    }
+
+    this.qualityFormFields = [...this.qualityFormFields, { fieldName: name, fieldType: this.newQualityFieldType }];
+    this.newQualityFieldName = '';
+    this.newQualityFieldType = 'TEXT';
+    this.formsMessage = '';
+  }
+
+  addExtractionField() {
+    const name = this.newExtractionFieldName.trim();
+    if (!name) return;
+
+    if (this.extractionFormFields.some(field => field.fieldName.toLowerCase() === name.toLowerCase())) {
+      this.formsMessage = 'Ya existe un campo de extracción con ese nombre';
+      return;
+    }
+
+    this.extractionFormFields = [...this.extractionFormFields, { fieldName: name, fieldType: this.newExtractionFieldType }];
+    this.newExtractionFieldName = '';
+    this.newExtractionFieldType = 'TEXT';
+    this.formsMessage = '';
+  }
+
+  removeQualityField(index: number) {
+    this.qualityFormFields = this.qualityFormFields.filter((_, fieldIndex) => fieldIndex !== index);
+  }
+
+  removeExtractionField(index: number) {
+    this.extractionFormFields = this.extractionFormFields.filter((_, fieldIndex) => fieldIndex !== index);
+  }
+
+  saveFormsDefinition() {
+    if (!this.protocolId) return;
+
+    this.formsLoading = true;
+    this.formsMessage = '';
+
+    this.protocolService.findOne(this.protocolId).pipe(
+      switchMap((protocol: ProtocolDTO) => {
+        protocol.qualityForm = {
+          id: protocol.qualityForm?.id,
+          formType: 'QUALITY',
+          formFields: this.qualityFormFields
+        };
+        protocol.extractionForm = {
+          id: protocol.extractionForm?.id,
+          formType: 'EXTRACTION',
+          formFields: this.extractionFormFields
+        };
+        return this.protocolService.update(protocol);
+      })
+    ).subscribe({
+      next: () => {
+        this.formsLoading = false;
+        this.formsMessage = 'Formularios guardados correctamente';
+        this.loadFormDefinitions();
+      },
+      error: (err) => {
+        console.error('Error guardando formularios:', err);
+        this.formsLoading = false;
+        this.formsMessage = 'No se pudieron guardar los formularios';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  getFieldPlaceholder(fieldType: FormFieldDTO['fieldType']): string {
+    if (fieldType === 'PICKONELIST') return 'Selecciona una opción';
+    if (fieldType === 'PICKMANYLIST') return 'Varias opciones separadas por coma';
+    if (fieldType === 'NUMBERSCALE') return 'Valor numérico';
+    if (fieldType === 'LABELEDSCALE') return 'Escala con etiqueta (ej. 4 - Bueno)';
+    return 'Valor';
+  }
+
+  applyQualityForm() {
+    const article = this.qualityArticleReference.trim();
+    if (!article || this.qualityFormFields.length === 0) {
+      this.formsMessage = 'Debes indicar artículo y tener campos de calidad definidos';
+      return;
+    }
+
+    const answers: Record<string, string> = {};
+    for (const field of this.qualityFormFields) {
+      const key = field.fieldName;
+      const value = (this.qualityAnswers[key] ?? '').toString().trim();
+      if (!value) {
+        this.formsMessage = 'Completa todos los campos de calidad';
+        return;
+      }
+      answers[key] = value;
+    }
+
+    this.qualityAppliedEntries = [
+      {
+        articleReference: article,
+        decision: this.qualityDecision,
+        answers,
+        createdAt: new Date().toISOString()
+      },
+      ...this.qualityAppliedEntries
+    ];
+
+    this.qualityAnswers = {};
+    this.qualityArticleReference = '';
+    this.qualityDecision = 'INCLUDE';
+    this.formsMessage = 'Evaluación de calidad aplicada';
+    this.persistAppliedFormEntries();
+  }
+
+  applyExtractionForm() {
+    const article = this.extractionArticleReference.trim();
+    if (!article || this.extractionFormFields.length === 0) {
+      this.formsMessage = 'Debes indicar artículo y tener campos de extracción definidos';
+      return;
+    }
+
+    const answers: Record<string, string> = {};
+    for (const field of this.extractionFormFields) {
+      const key = field.fieldName;
+      const value = (this.extractionAnswers[key] ?? '').toString().trim();
+      if (!value) {
+        this.formsMessage = 'Completa todos los campos de extracción';
+        return;
+      }
+      answers[key] = value;
+    }
+
+    this.extractionAppliedEntries = [
+      {
+        articleReference: article,
+        answers,
+        createdAt: new Date().toISOString()
+      },
+      ...this.extractionAppliedEntries
+    ];
+
+    this.extractionAnswers = {};
+    this.extractionArticleReference = '';
+    this.formsMessage = 'Formulario de extracción aplicado';
+    this.persistAppliedFormEntries();
+  }
+
+  private persistAppliedFormEntries() {
+    if (!this.isBrowser || !this.protocolId) return;
+
+    localStorage.setItem(
+      `quality-applied-${this.protocolId}`,
+      JSON.stringify(this.qualityAppliedEntries)
+    );
+    localStorage.setItem(
+      `extraction-applied-${this.protocolId}`,
+      JSON.stringify(this.extractionAppliedEntries)
+    );
+  }
+
+  private loadAppliedFormEntries() {
+    if (!this.isBrowser || !this.protocolId) return;
+
+    const quality = localStorage.getItem(`quality-applied-${this.protocolId}`);
+    const extraction = localStorage.getItem(`extraction-applied-${this.protocolId}`);
+
+    this.qualityAppliedEntries = quality ? JSON.parse(quality) : [];
+    this.extractionAppliedEntries = extraction ? JSON.parse(extraction) : [];
+  }
+
+  private refreshProtocolData() {
+    if (!this.protocolId) return;
+
+    this.protocolService.findOne(this.protocolId).subscribe({
+      next: (protocol) => {
+        this.keywords = protocol.keywords ?? [];
+        this.sources = protocol.sources ?? [];
+        this.mainQuestions = protocol.mainQuestions ?? [];
+        this.studyCriteria = protocol.studySelectionCriterions ?? [];
+        this.sourcesCriteria = protocol.sourcesSelectionCriterions ?? [];
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error recargando protocolo:', err);
+      }
+    });
   }
 
   // ============ KEYWORDS ============
@@ -116,9 +433,8 @@ export class ProtocolComponent implements OnInit {
     const keyword: KeywordDTO = { keyword: this.newKeyword.trim() };
     this.keywordService.createAndSave(keyword, this.protocolId).subscribe({
       next: () => {
-        this.keywords.push(keyword);
         this.newKeyword = '';
-        this.cdr.markForCheck();
+        this.refreshProtocolData();
       },
       error: (err) => {
         console.error('Error añadiendo keyword:', err);
@@ -132,8 +448,7 @@ export class ProtocolComponent implements OnInit {
 
     this.keywordService.deleteFromProtocol(keyword, this.protocolId).subscribe({
       next: () => {
-        this.keywords = this.keywords.filter(k => k.id !== keyword.id);
-        this.cdr.markForCheck();
+        this.refreshProtocolData();
       },
       error: (err) => {
         console.error('Error eliminando keyword:', err);
@@ -148,10 +463,9 @@ export class ProtocolComponent implements OnInit {
 
     const question: MainQuestionDTO = { question: this.newMainQuestion.trim() };
     this.mainQuestionService.createAndSave(question, this.protocolId).subscribe({
-      next: (id) => {
-        this.mainQuestions.push({ ...question, id });
+      next: () => {
         this.newMainQuestion = '';
-        this.cdr.markForCheck();
+        this.refreshProtocolData();
       },
       error: (err) => {
         console.error('Error añadiendo pregunta principal:', err);
@@ -161,17 +475,17 @@ export class ProtocolComponent implements OnInit {
   }
 
   addSecondaryQuestion(mainQuestionId: number) {
-    if (!this.newSecondaryQuestion.trim()) return;
+    const newQuestion = (this.newSecondaryQuestions[mainQuestionId] || '').trim();
+    if (!newQuestion) return;
 
     const question: SecondaryQuestionDTO = { 
-      question: this.newSecondaryQuestion.trim(),
+      question: newQuestion,
       mainQuestionId
     };
     this.secondaryQuestionService.createAndSave(question, mainQuestionId).subscribe({
       next: () => {
-        this.newSecondaryQuestion = '';
-        alert('Pregunta secundaria añadida correctamente');
-        this.cdr.markForCheck();
+        this.newSecondaryQuestions[mainQuestionId] = '';
+        this.refreshProtocolData();
       },
       error: (err) => {
         console.error('Error añadiendo pregunta secundaria:', err);
@@ -180,20 +494,120 @@ export class ProtocolComponent implements OnInit {
     });
   }
 
+  startEditMainQuestion(question: MainQuestionDTO) {
+    if (!question.id) return;
+    this.editingMainQuestionId = question.id;
+    this.editingMainQuestionText = question.question;
+  }
+
+  cancelEditMainQuestion() {
+    this.editingMainQuestionId = undefined;
+    this.editingMainQuestionText = '';
+  }
+
+  saveMainQuestion(question: MainQuestionDTO) {
+    if (!question.id || !this.editingMainQuestionText.trim()) return;
+
+    const updatedQuestion: MainQuestionDTO = {
+      id: question.id,
+      question: this.editingMainQuestionText.trim(),
+      secondaryQuestions: question.secondaryQuestions ?? []
+    };
+
+    this.mainQuestionService.update(updatedQuestion).subscribe({
+      next: () => {
+        this.cancelEditMainQuestion();
+        this.refreshProtocolData();
+      },
+      error: (err: any) => {
+        console.error('Error editando pregunta principal:', err);
+        alert('Error al editar pregunta principal');
+      }
+    });
+  }
+
+  removeMainQuestion(question: MainQuestionDTO) {
+    if (!question.id) return;
+    if (!confirm('¿Deseas eliminar esta pregunta principal y sus secundarias?')) return;
+
+    this.mainQuestionService.delete(question.id).subscribe({
+      next: () => {
+        this.refreshProtocolData();
+      },
+      error: (err: any) => {
+        console.error('Error eliminando pregunta principal:', err);
+        alert('Error al eliminar pregunta principal');
+      }
+    });
+  }
+
+  startEditSecondaryQuestion(secQuestion: SecondaryQuestionDTO) {
+    if (!secQuestion.id) return;
+    this.editingSecondaryQuestionId = secQuestion.id;
+    this.editingSecondaryQuestionText = secQuestion.question;
+  }
+
+  cancelEditSecondaryQuestion() {
+    this.editingSecondaryQuestionId = undefined;
+    this.editingSecondaryQuestionText = '';
+  }
+
+  saveSecondaryQuestion(secQuestion: SecondaryQuestionDTO, mainQuestionId: number) {
+    if (!secQuestion.id || !this.editingSecondaryQuestionText.trim()) return;
+
+    const updatedQuestion: SecondaryQuestionDTO = {
+      id: secQuestion.id,
+      question: this.editingSecondaryQuestionText.trim(),
+      mainQuestionId
+    };
+
+    this.secondaryQuestionService.update(updatedQuestion).subscribe({
+      next: () => {
+        this.cancelEditSecondaryQuestion();
+        this.refreshProtocolData();
+      },
+      error: (err: any) => {
+        console.error('Error editando pregunta secundaria:', err);
+        alert('Error al editar pregunta secundaria');
+      }
+    });
+  }
+
+  removeSecondaryQuestion(secQuestion: SecondaryQuestionDTO) {
+    if (!secQuestion.id) return;
+    if (!confirm('¿Deseas eliminar esta pregunta secundaria?')) return;
+
+    this.secondaryQuestionService.delete(secQuestion.id).subscribe({
+      next: () => {
+        this.refreshProtocolData();
+      },
+      error: (err: any) => {
+        console.error('Error eliminando pregunta secundaria:', err);
+        alert('Error al eliminar pregunta secundaria');
+      }
+    });
+  }
+
   // ============ SOURCES ============
   addSource() {
-    if (!this.newSourceName.trim() || !this.protocolId) return;
+    if (!this.protocolId) return;
+
+    const selectedSourceName = this.newSourceName === this.otherBibliographicSourceValue
+      ? this.newSourceNameOther.trim()
+      : this.newSourceName.trim();
+
+    if (!selectedSourceName) return;
 
     const source: SourceDTO = { 
-      name: this.newSourceName.trim(),
+      name: selectedSourceName,
       url: this.newSourceUrl.trim() || undefined
     };
     this.sourceService.createAndSave(source, this.protocolId).subscribe({
       next: () => {
-        this.sources.push(source);
         this.newSourceName = '';
+        this.newSourceNameOther = '';
         this.newSourceUrl = '';
-        this.cdr.markForCheck();
+        this.refreshProtocolData();
       },
       error: (err) => {
         console.error('Error añadiendo fuente:', err);
@@ -202,13 +616,22 @@ export class ProtocolComponent implements OnInit {
     });
   }
 
+  get isOtherBibliographicSourceSelected(): boolean {
+    return this.newSourceName === this.otherBibliographicSourceValue;
+  }
+
+  get canAddBibliographicSource(): boolean {
+    if (!this.protocolId) return false;
+    if (this.isOtherBibliographicSourceSelected) return !!this.newSourceNameOther.trim();
+    return !!this.newSourceName.trim();
+  }
+
   removeSource(source: SourceDTO) {
     if (!source.id || !this.protocolId) return;
 
     this.sourceService.deleteFromProtocol(source.id, this.protocolId).subscribe({
       next: () => {
-        this.sources = this.sources.filter(s => s.id !== source.id);
-        this.cdr.markForCheck();
+        this.refreshProtocolData();
       },
       error: (err) => {
         console.error('Error eliminando fuente:', err);
@@ -305,6 +728,7 @@ export class ProtocolComponent implements OnInit {
     this.submitError = '';
 
     const protocolData: ProtocolDTO = {
+      id: this.protocolId,
       ...this.protocolForm.value
     };
 

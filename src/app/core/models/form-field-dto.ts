@@ -1,6 +1,6 @@
 export interface FormFieldDTO {
   id?: number;
   fieldName: string;
-  fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT' | 'TEXTAREA';
+  fieldType: 'TEXT' | 'PICKONELIST' | 'PICKMANYLIST' | 'NUMBERSCALE' | 'LABELEDSCALE';
   formId?: number;
 }

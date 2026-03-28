@@ -93,4 +93,26 @@ export class ReviewService {
       `${this.API_URL}${userId}/my-collaborative-reviews`
     );
   }
+
+  isPrincipal(slrId: number, userId: number): Observable<boolean> {
+    return this.http.post<boolean>(
+      `${this.API_URL}user/is-principtal-slr/${userId}/${slrId}`,
+      null,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  existSLR(slrId: number): Observable<boolean> {
+    return this.http.get<boolean>(
+      `${this.API_URL}${slrId}/exists`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  findAll(): Observable<SLRDTO[]> {
+    return this.http.get<SLRDTO[]>(
+      `${this.API_URL}all`,
+      { headers: this.getHeaders() }
+    );
+  }
 }

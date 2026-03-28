@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ReviewService, SLRDTO } from '../../reviews';
+import { UserService } from '../../core/auth/user.service';
+import { UserDTO } from '../../core/models/user-dto';
 import { DataRefreshService } from '../../shared/services/data-refresh.service';
 import { Subscription } from 'rxjs';
 
@@ -28,12 +30,19 @@ export class ReviewsComponent implements OnInit, OnDestroy {
   showDetailPanel = false;
   selectedReviewDetail?: SLRDTO;
   detailLoading = false;
+  collaboratorEmail = '';
+  collaboratorSearchLoading = false;
+  collaboratorAddLoading = false;
+  collaboratorSearchError = '';
+  collaboratorSearchResult?: UserDTO;
+  collaboratorActionMessage = '';
   private isBrowser: boolean;
   private refreshSubscription?: Subscription;
   private pollingIntervalId?: number;
 
   constructor(
     private reviewService: ReviewService,
+    private userService: UserService,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
     private refreshService: DataRefreshService,
@@ -134,9 +143,15 @@ export class ReviewsComponent implements OnInit, OnDestroy {
     if (!review || !review.id) return;
     this.detailLoading = true;
     this.showDetailPanel = true;
+    this.resetCollaboratorSearch();
     this.reviewService.getSLRById(review.id).subscribe({
       next: (detail) => {
         console.log('Detalles de review cargados:', detail);
+        console.log('Principal researcher:', detail.principalResearcher);
+        console.log('Collaborators:', detail.collaboratorResearchers);
+        if (detail.collaboratorResearchers && detail.collaboratorResearchers.length > 0) {
+          console.log('Primer colaborador:', detail.collaboratorResearchers[0]);
+        }
         this.selectedReviewDetail = detail;
         this.detailLoading = false;
         this.cdr.markForCheck();
@@ -153,7 +168,80 @@ export class ReviewsComponent implements OnInit, OnDestroy {
   closeDetailPanel() {
     this.showDetailPanel = false;
     this.selectedReviewDetail = undefined;
+    this.resetCollaboratorSearch();
     this.cdr.markForCheck();
+  }
+
+  searchCollaboratorByEmail() {
+    const email = this.collaboratorEmail.trim();
+    this.collaboratorSearchError = '';
+    this.collaboratorActionMessage = '';
+    this.collaboratorSearchResult = undefined;
+
+    if (!email) {
+      this.collaboratorSearchError = 'Introduce un email para buscar';
+      return;
+    }
+
+    this.collaboratorSearchLoading = true;
+    this.userService.findByEmail(email).subscribe({
+      next: (user) => {
+        this.collaboratorSearchResult = user;
+        this.collaboratorSearchLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.collaboratorSearchLoading = false;
+        this.collaboratorSearchError = err?.status === 404
+          ? 'No se encontró un usuario con ese email'
+          : 'Error al buscar usuario por email';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  addCollaboratorToSelectedReview() {
+    const slrId = this.selectedReviewDetail?.id;
+    const email = this.collaboratorSearchResult?.email || this.collaboratorEmail.trim();
+
+    this.collaboratorSearchError = '';
+    this.collaboratorActionMessage = '';
+
+    if (!slrId || !email) {
+      this.collaboratorSearchError = 'Selecciona una revisión y busca un usuario válido';
+      return;
+    }
+
+    this.collaboratorAddLoading = true;
+    this.userService.addCollaborator(slrId, email).subscribe({
+      next: () => {
+        this.collaboratorAddLoading = false;
+        this.collaboratorActionMessage = 'Colaborador añadido correctamente';
+        this.reviewService.getSLRById(slrId).subscribe({
+          next: (detail) => {
+            this.selectedReviewDetail = detail;
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.cdr.markForCheck();
+          }
+        });
+      },
+      error: (err) => {
+        this.collaboratorAddLoading = false;
+        this.collaboratorSearchError = err?.error || 'Error al añadir colaborador';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private resetCollaboratorSearch() {
+    this.collaboratorEmail = '';
+    this.collaboratorSearchLoading = false;
+    this.collaboratorAddLoading = false;
+    this.collaboratorSearchError = '';
+    this.collaboratorSearchResult = undefined;
+    this.collaboratorActionMessage = '';
   }
 
   loadReviews() {

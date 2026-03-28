@@ -59,8 +59,12 @@ export class ReportService {
   }
 
   update(report: ReportDTO): Observable<ReportDTO> {
+    if (!report.id) {
+      throw new Error('Report ID is required to update report');
+    }
+
     return this.http.put<ReportDTO>(
-      `${this.API_URL}update`,
+      `${this.API_URL}${report.id}/edit`,
       report,
       { headers: this.getHeaders() }
     );
