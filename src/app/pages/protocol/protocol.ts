@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { ProtocolService } from '../../core/services/protocol.service';
+import { FormFieldService } from '../../core/services/form-field.service';
 import { KeywordService } from '../../core/services/keyword.service';
 import { MainQuestionService } from '../../core/services/main-question.service';
 import { SecondaryQuestionService } from '../../core/services/secondary-question.service';
@@ -23,6 +24,9 @@ import { SnowballingDTO } from '../../core/models/snowballing-dto';
 import { StudySelectionCriterionDTO } from '../../core/models/study-selection-criterion-dto';
 import { SourcesSelectionCriterionDTO } from '../../core/models/sources-selection-criterion-dto';
 import { FormFieldDTO } from '../../core/models/form-field-dto';
+import { ScopusService } from '../../core/services/scopus.service';
+import { ScopusSearchDTO } from '../../core/models/scopus-search-dto';
+import { ScopusStudyDTO } from '../../core/models/scopus-study-dto';
 
 @Component({
   selector: 'app-protocol',
@@ -35,11 +39,11 @@ export class ProtocolComponent implements OnInit {
 
   protocolForm: FormGroup;
   bibliographicSourceOptions: string[] = [
-    'url',
-    'articulo',
-    'libro',
-    'tesis y trabajos academicos',
-    'informes y documentos oficiales'
+    'URL',
+    'Artículo',
+    'Libro',
+    'Tesis y trabajos académicos',
+    'Informes y documentos oficiales'
   ];
   otherBibliographicSourceValue = 'otro';
   slrId: number = 0;
@@ -69,9 +73,42 @@ export class ProtocolComponent implements OnInit {
   newSourceNameOther: string = '';
   newSourceUrl: string = '';
   newSnowballingSource: string = '';
-  newSnowballingType: 'FORWARD' | 'BACKWARD' = 'FORWARD';
+  newSnowballingType: 'FORWARD' | 'BACKWARDS' = 'FORWARD';
+
+  scopusQuery = '';
+  scopusObservations = '';
+  scopusLoading = false;
+  scopusError = '';
+  scopusResult?: ScopusSearchDTO;
+  scopusStudies: ScopusStudyDTO[] = [];
+  scopusPageSize = 10;
+  scopusPageIndex = 0;
+  scopusSnowballingType: 'FORWARD' | 'BACKWARDS' = 'FORWARD';
   newStudyCriterion: string = '';
   newSourcesCriterion: string = '';
+
+  get scopusTotalPages(): number {
+    const pageSize = this.scopusPageSize || 0;
+    if (pageSize <= 0) return 1;
+    return Math.max(1, Math.ceil(this.scopusStudies.length / pageSize));
+  }
+
+  get pagedScopusStudies(): ScopusStudyDTO[] {
+    const pageSize = this.scopusPageSize || 0;
+    if (pageSize <= 0) return this.scopusStudies;
+
+    const safePageIndex = Math.max(0, Math.min(this.scopusPageIndex, this.scopusTotalPages - 1));
+    const start = safePageIndex * pageSize;
+    return this.scopusStudies.slice(start, start + pageSize);
+  }
+
+  prevScopusPage() {
+    this.scopusPageIndex = Math.max(0, this.scopusPageIndex - 1);
+  }
+
+  nextScopusPage() {
+    this.scopusPageIndex = Math.min(this.scopusTotalPages - 1, this.scopusPageIndex + 1);
+  }
 
   qualityFormFields: FormFieldDTO[] = [];
   extractionFormFields: FormFieldDTO[] = [];
@@ -118,11 +155,13 @@ export class ProtocolComponent implements OnInit {
 
   constructor(
     private protocolService: ProtocolService,
+    private formFieldService: FormFieldService,
     private keywordService: KeywordService,
     private mainQuestionService: MainQuestionService,
     private secondaryQuestionService: SecondaryQuestionService,
     private sourceService: SourceService,
     private snowballingService: SnowballingService,
+    private scopusService: ScopusService,
     private studySelectionCriterionService: StudySelectionCriterionService,
     private sourcesSelectionCriterionService: SourcesSelectionCriterionService,
     private reviewService: ReviewService,
@@ -175,7 +214,7 @@ export class ProtocolComponent implements OnInit {
               // Cargar las listas de entidades
               this.keywords = protocol.keywords ?? [];
               this.mainQuestions = protocol.mainQuestions ?? [];
-              this.sources = protocol.sources ?? [];
+              this.splitSourcesAndSnowballings(protocol.sources);
               this.studyCriteria = protocol.studySelectionCriterions ?? [];
               this.sourcesCriteria = protocol.sourcesSelectionCriterions ?? [];
 
@@ -264,14 +303,6 @@ export class ProtocolComponent implements OnInit {
     this.newExtractionFieldName = '';
     this.newExtractionFieldType = 'TEXT';
     this.formsMessage = '';
-  }
-
-  removeQualityField(index: number) {
-    this.qualityFormFields = this.qualityFormFields.filter((_, fieldIndex) => fieldIndex !== index);
-  }
-
-  removeExtractionField(index: number) {
-    this.extractionFormFields = this.extractionFormFields.filter((_, fieldIndex) => fieldIndex !== index);
   }
 
   saveFormsDefinition() {
@@ -408,13 +439,107 @@ export class ProtocolComponent implements OnInit {
     this.extractionAppliedEntries = extraction ? JSON.parse(extraction) : [];
   }
 
+  private splitSourcesAndSnowballings(protocolSources: unknown) {
+    const isSnowballing = (value: any): value is SnowballingDTO => {
+      return !!value && typeof value === 'object' && 'snowballingType' in value && 'source' in value;
+    };
+
+    const sources = Array.isArray(protocolSources) ? protocolSources : [];
+    this.snowballings = sources.filter(isSnowballing);
+    this.sources = sources.filter((s) => !isSnowballing(s));
+  }
+
+  // ============ SCOPUS SEARCH ============
+  searchScopus() {
+    if (!this.protocolId) {
+      this.scopusError = 'Primero debes crear el protocolo';
+      return;
+    }
+
+    const query = this.scopusQuery.trim();
+    const observations = this.scopusObservations.trim();
+
+    if (!query || !observations) {
+      this.scopusError = 'Introduce una query y observaciones';
+      return;
+    }
+
+    this.scopusLoading = true;
+    this.scopusError = '';
+    this.scopusResult = undefined;
+    this.scopusStudies = [];
+    this.scopusPageIndex = 0;
+
+    const payload: ScopusSearchDTO = {
+      query,
+      observations,
+      sourceName: 'Scopus',
+      protocolId: this.protocolId
+    };
+
+    this.scopusService.search(payload).subscribe({
+      next: (result) => {
+        this.scopusResult = result;
+        this.scopusStudies = (result.studies ?? []) as ScopusStudyDTO[];
+        this.scopusPageIndex = 0;
+        this.scopusLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error en búsqueda Scopus:', err);
+        this.scopusLoading = false;
+        this.scopusError = err?.error || 'No se pudo realizar la búsqueda en Scopus';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  addSnowballingFromScopus(study: ScopusStudyDTO) {
+    if (!this.protocolId) return;
+
+    const studyId = study.id;
+    const title = (study.dcTitle || study.dcIdentifier || study.eid || '').toString().trim();
+    if (!studyId || !title) {
+      alert('El estudio no tiene id/título válido para crear snowballing');
+      return;
+    }
+
+    const alreadyExists = this.snowballings.some(s => s.studyId === studyId);
+    if (alreadyExists) {
+      alert('Este estudio ya está añadido como snowballing');
+      return;
+    }
+
+    const snowballing: SnowballingDTO = {
+      name: title,
+      source: title,
+      snowballingType: this.scopusSnowballingType,
+      studyId
+    };
+
+    this.snowballingService.createAndSave(snowballing, this.protocolId).subscribe({
+      next: (created) => {
+        this.snowballings.push(created);
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error creando snowballing desde Scopus:', err);
+        alert('Error al añadir snowballing desde Scopus');
+      }
+    });
+  }
+
+  trackByScopusStudyId(_index: number, study: ScopusStudyDTO) {
+    return study.id ?? study.dcIdentifier ?? study.eid ?? study.dcTitle ?? _index;
+  }
+
   private refreshProtocolData() {
     if (!this.protocolId) return;
 
     this.protocolService.findOne(this.protocolId).subscribe({
       next: (protocol) => {
         this.keywords = protocol.keywords ?? [];
-        this.sources = protocol.sources ?? [];
+        this.splitSourcesAndSnowballings(protocol.sources);
         this.mainQuestions = protocol.mainQuestions ?? [];
         this.studyCriteria = protocol.studySelectionCriterions ?? [];
         this.sourcesCriteria = protocol.sourcesSelectionCriterions ?? [];
@@ -644,9 +769,11 @@ export class ProtocolComponent implements OnInit {
   addSnowballing() {
     if (!this.newSnowballingSource.trim() || !this.protocolId) return;
 
+    const sourceValue = this.newSnowballingSource.trim();
+
     const snowballing: SnowballingDTO = {
-      name: 'Snowballing',
-      source: this.newSnowballingSource.trim(),
+      name: sourceValue,
+      source: sourceValue,
       snowballingType: this.newSnowballingType
     };
     this.snowballingService.createAndSave(snowballing, this.protocolId).subscribe({
@@ -665,7 +792,7 @@ export class ProtocolComponent implements OnInit {
   removeSnowballing(snowballing: SnowballingDTO) {
     if (!snowballing.id || !this.protocolId) return;
 
-    this.snowballingService.deleteFromProtocol(snowballing.id, this.protocolId).subscribe({
+    this.snowballingService.delete(snowballing.id).subscribe({
       next: () => {
         this.snowballings = this.snowballings.filter(s => s.id !== snowballing.id);
         this.cdr.markForCheck();

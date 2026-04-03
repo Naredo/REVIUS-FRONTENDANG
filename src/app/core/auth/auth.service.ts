@@ -1,7 +1,8 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable,BehaviorSubject } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import {jwtDecode} from 'jwt-decode';
 import { environment } from '../../../enviroment';
 
@@ -141,11 +142,45 @@ setUserFromToken(token: string) {
     return null;
   }
 
-  logout() {
-    if (this.isBrowser) {
-      localStorage.clear();
+  private clearSession() {
+    if (!this.isBrowser) {
       this.userSubject.next(null);
+      return;
     }
+
+    localStorage.clear();
+    this.userSubject.next(null);
+  }
+
+  logout() {
+    if (!this.isBrowser) {
+      this.userSubject.next(null);
+      return;
+    }
+
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      this.clearSession();
+      return;
+    }
+
+    const logoutUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:9002/api/logout/'
+      : 'http://user-service:9002/api/logout/';
+
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${token}`
+    });
+
+    this.http
+      .post(logoutUrl, null, { headers, responseType: 'text' })
+      .pipe(finalize(() => this.clearSession()))
+      .subscribe({
+        next: () => {},
+        error: (err) => {
+          console.warn('Logout remoto falló; limpiando sesión local igualmente.', err);
+        }
+      });
   }
 
   isLoggedIn(): boolean {

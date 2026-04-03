@@ -62,8 +62,12 @@ export class KeywordService {
   }
 
   update(keyword: KeywordDTO): Observable<KeywordDTO> {
+    if (!keyword.id) {
+      throw new Error('Keyword ID is required to update keyword');
+    }
+
     return this.http.put<KeywordDTO>(
-      `${this.API_URL}update`,
+      `${this.API_URL}${keyword.id}/edit`,
       keyword,
       { headers: this.getHeaders() }
     );

@@ -75,28 +75,6 @@
           Hacer esta revisión pública
         </label>
       </div>
-
-      <div class="form-group">
-        <label for="scope">Alcance</label>
-        <input
-          id="scope"
-          type="text"
-          formControlName="scope"
-          placeholder="Alcance de la revisión"
-          class="form-input"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="methodology">Metodología</label>
-        <textarea
-          id="methodology"
-          formControlName="methodology"
-          placeholder="Metodología a usar"
-          class="form-textarea"
-          rows="3"></textarea>
-      </div>
-
       <div *ngIf="submitError" class="error-message">
         {{ submitError }}
       </div>

@@ -59,17 +59,25 @@ export class SnowballingService {
   }
 
   update(snowballing: SnowballingDTO): Observable<SnowballingDTO> {
+    if (!snowballing.id) {
+      throw new Error('Snowballing ID is required to update snowballing');
+    }
+
     return this.http.put<SnowballingDTO>(
-      `${this.API_URL}update`,
+      `${this.API_URL}${snowballing.id}/edit`,
       snowballing,
       { headers: this.getHeaders() }
     );
   }
 
-  deleteFromProtocol(snowballingId: number, protocolId: number): Observable<void> {
-    return this.http.delete<void>(
-      `${this.API_URL}${snowballingId}/protocol/${protocolId}/delete`,
-      { headers: this.getHeaders(), responseType: 'text' as 'json' }
+  delete(snowballingId: number): Observable<string> {
+    return this.http.delete(
+      `${this.API_URL}${snowballingId}/delete`,
+      { headers: this.getHeaders(), responseType: 'text' }
     );
+  }
+
+  deleteFromProtocol(snowballingId: number, _protocolId: number): Observable<string> {
+    return this.delete(snowballingId);
   }
 }

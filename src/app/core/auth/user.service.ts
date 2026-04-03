@@ -7,7 +7,6 @@ import { UpdateUserNameDTO } from '../models/update-username-dto';
 import { UpdateProfileDTO } from '../models/update-profile--dto';
 import { NewPasswordDTO } from '../models/new-password-dto';
 import { UserDTO } from '../models/user-dto';
-import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
@@ -89,19 +88,6 @@ export class UserService {
     const encodedEmail = encodeURIComponent(email);
     return this.http.get<UserDTO>(
       `${this.API_URL}email/${encodedEmail}`
-    );
-  }
-
-  exists(userId: number): Observable<boolean> {
-    return this.http.get<boolean>(
-      `${this.API_URL}${userId}/exists`
-    );
-  }
-
-  findEmailsByUserIds(userIds: number[]): Observable<string[]> {
-    return this.http.post<string[]>(
-      `${this.API_URL}emails-by-ids`,
-      userIds
     );
   }
 }

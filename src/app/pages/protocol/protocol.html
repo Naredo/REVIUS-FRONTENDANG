@@ -299,12 +299,7 @@
         </div>
         <button class="btn-remove" (click)="removeSource(source)">✕</button>
       </div>
-
-      <div *ngIf="sources.length === 0 && protocolId" class="empty-state">
-        No hay fuentes añadidas
-      </div>
     </div>
-
     <h3>Snowballing</h3>
     <div class="add-item-form">
       <input
@@ -315,24 +310,73 @@
       />
       <select [(ngModel)]="newSnowballingType" class="form-select">
         <option value="FORWARD">Hacia adelante</option>
-        <option value="BACKWARD">Hacia atrás</option>
+        <option value="BACKWARDS">Hacia atrás</option>
       </select>
       <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
         + Añadir Snowballing
       </button>
     </div>
 
+    <h3>Búsqueda en Scopus</h3>
+    <div *ngIf="!protocolId" class="info-message">
+      Primero debes crear el protocolo en la sección "Información Básica"
+    </div>
+
+    <div *ngIf="protocolId" class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="scopusQuery"
+        placeholder="Query Scopus (ej. TITLE-ABS-KEY(systematic review))"
+        class="form-input"
+      />
+      <input
+        type="text"
+        [(ngModel)]="scopusObservations"
+        placeholder="Observaciones (obligatorio)"
+        class="form-input"
+      />
+      <button class="btn-add" (click)="searchScopus()" [disabled]="scopusLoading || !scopusQuery.trim() || !scopusObservations.trim()">
+        {{ scopusLoading ? 'Buscando...' : 'Buscar' }}
+      </button>
+    </div>
+
+    <div *ngIf="scopusError" class="error-message">{{ scopusError }}</div>
+
+    <div *ngIf="scopusStudies.length > 0" class="items-list">
+      <div class="add-item-form">
+        <select [(ngModel)]="scopusSnowballingType" class="form-select">
+          <option value="FORWARD">Snowballing hacia adelante</option>
+          <option value="BACKWARDS">Snowballing hacia atrás</option>
+        </select>
+      </div>
+
+      <div *ngIf="scopusStudies.length > scopusPageSize" class="add-item-form">
+        <button class="btn-add-small" (click)="prevScopusPage()" [disabled]="scopusPageIndex === 0">
+          Anterior
+        </button>
+        <button class="btn-add-small" (click)="nextScopusPage()" [disabled]="scopusPageIndex >= scopusTotalPages - 1">
+          Siguiente
+        </button>
+        <span>Página {{ scopusPageIndex + 1 }} / {{ scopusTotalPages }} ({{ scopusStudies.length }} resultados)</span>
+      </div>
+
+      <div *ngFor="let study of (pagedScopusStudies.length ? pagedScopusStudies : scopusStudies); trackBy: trackByScopusStudyId" class="item-card">
+        <div>
+          <strong>{{ study.dcTitle || study.dcIdentifier || study.eid }}</strong>
+          <div class="source-url" *ngIf="study.dcCreator">{{ study.dcCreator }}</div>
+          <div class="source-url" *ngIf="study.prismDoi">DOI: {{ study.prismDoi }}</div>
+          <div class="source-url" *ngIf="study.prismCoverDate">{{ study.prismCoverDate }}</div>
+        </div>
+        <button class="btn-add" (click)="addSnowballingFromScopus(study)">+ Añadir</button>
+      </div>
+    </div>
+
     <div class="items-list">
       <div *ngFor="let snowballing of snowballings" class="item-card">
         <div>
           <strong>{{ snowballing.source }}</strong>
-          <span class="badge">{{ snowballing.snowballingType }}</span>
         </div>
         <button class="btn-remove" (click)="removeSnowballing(snowballing)">✕</button>
-      </div>
-
-      <div *ngIf="snowballings.length === 0 && protocolId" class="empty-state">
-        No hay snowballings añadidos
       </div>
     </div>
   </div>
@@ -402,9 +446,7 @@
             <div *ngFor="let field of qualityFormFields; let i = index" class="item-card">
               <div>
                 <strong>{{ field.fieldName }}</strong>
-                <span class="badge">{{ field.fieldType }}</span>
               </div>
-              <button class="btn-remove" (click)="removeQualityField(i)">✕</button>
             </div>
 
             <div *ngIf="qualityFormFields.length === 0" class="empty-state">
@@ -435,9 +477,7 @@
             <div *ngFor="let field of extractionFormFields; let i = index" class="item-card">
               <div>
                 <strong>{{ field.fieldName }}</strong>
-                <span class="badge">{{ field.fieldType }}</span>
               </div>
-              <button class="btn-remove" (click)="removeExtractionField(i)">✕</button>
             </div>
 
             <div *ngIf="extractionFormFields.length === 0" class="empty-state">
@@ -522,7 +562,6 @@
             <div *ngFor="let item of qualityAppliedEntries" class="item-card">
               <div>
                 <strong>{{ item.articleReference }}</strong>
-                <span class="badge">{{ item.decision === 'INCLUDE' ? 'Incluido' : 'Excluido' }}</span>
               </div>
             </div>
           </div>
@@ -586,7 +625,6 @@
             <div *ngFor="let item of extractionAppliedEntries" class="item-card">
               <div>
                 <strong>{{ item.articleReference }}</strong>
-                <span class="badge">Extracción registrada</span>
               </div>
             </div>
           </div>

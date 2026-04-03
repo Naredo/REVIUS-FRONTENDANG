@@ -90,7 +90,8 @@ export class ReviewService {
 
    getMyCollaborativeSLRs(userId: number): Observable<SLRDTO[]> {
     return this.http.get<SLRDTO[]>(
-      `${this.API_URL}${userId}/my-collaborative-reviews`
+      `${this.USER_API_URL}${userId}/my-collaborative-reviews`,
+      { headers: this.getHeaders() }
     );
   }
 

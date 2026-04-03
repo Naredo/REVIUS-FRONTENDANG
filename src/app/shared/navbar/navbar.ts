@@ -41,8 +41,9 @@ export class NavbarComponent implements OnInit {
   }
 
   ngOnInit(): void {
-
+  
   }
+
 
 
 goToAdmin(): void {
@@ -122,66 +123,49 @@ goToAdmin(): void {
           alert('Error al guardar el perfil');
         }
       });
-  }
-updateUsername(): void {
-  const userName = this.profileForm.get('userName')?.value;
-  const password = this.profileForm.get('oldPassword')?.value;
 
-  if (!userName || !password) {
-    alert('Debes introducir tu contraseña actual');
-    return;
-  }
-
-  this.userService.updateUsername({
-    userName,
-    password
-  }).subscribe({
-    next: (msg) => {
-      alert(msg);
-    },
-    error: err => {
-      console.error('Error actualizando username:', err);
-      alert(err.error || 'Error al actualizar el nombre de usuario');
-    }
-  });
-}
-
-
-
-changePassword(): void {
-  if (!this.userProfile) {
-    return;
-  }
-
-  const oldPassword = this.profileForm.get('oldPassword')?.value;
-  const newPassword = this.profileForm.get('newPassword')?.value;
-
-  if (!oldPassword || !newPassword) {
-    alert('Debes introducir la contraseña actual y la nueva');
-    return;
-  }
-
-  const dto = {
-    username: this.userProfile.userName,
-    oldPassword,
-    newPassword
-  };
-
-  this.userService.changePassword(dto).subscribe({
-    next: () => {
-      alert('Contraseña cambiada correctamente');
-
-      // limpiar campos
-      this.profileForm.patchValue({
-        oldPassword: '',
-        newPassword: ''
-      });
-    },
-    error: err => {
-      console.error('Error cambiando contraseña:', err);
-      alert('Error al cambiar la contraseña');
-    }
-  });
-}
+      if(this.profileForm.get('oldPassword')?.value && !this.profileForm.get('newPassword')?.value){
+        const userName = this.profileForm.get('userName')?.value;
+        const password = this.profileForm.get('oldPassword')?.value;
+        
+        this.userService.updateUsername({
+          userName,
+          password
+        }).subscribe({
+          next: (msg) => {
+            alert(msg);
+            this.logout();
+          },
+          error: err => {
+            console.error('Error actualizando username:', err);
+            alert(err.error || 'Error al actualizar el nombre de usuario');
+          }
+        });
+      }
+      if(this.profileForm.get('oldPassword')?.value && this.profileForm.get('newPassword')?.value){
+        
+        const oldPassword = this.profileForm.get('oldPassword')?.value;
+        const newPassword = this.profileForm.get('newPassword')?.value;
+         const dto = {
+          username: this.userProfile.userName,
+          oldPassword,
+          newPassword
+        };
+          this.userService.changePassword(dto).subscribe({
+            next: () => {
+              alert('Contraseña cambiada correctamente');
+              this.profileForm.patchValue({
+                oldPassword: '',
+                newPassword: ''
+              });
+              this.logout();
+            },
+            error: err => {
+              console.error('Error cambiando contraseña:', err);
+              alert('Error al cambiar la contraseña');
+            }
+          });
+     }
+        }
 
 }

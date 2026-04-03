@@ -72,7 +72,7 @@ export class ReportService {
 
   delete(reportId: number, slrId: number): Observable<void> {
     return this.http.delete<void>(
-      `${this.API_URL}${reportId}/slr/${slrId}/delete`,
+      `${this.API_URL}${reportId}/delete`,
       { headers: this.getHeaders(), responseType: 'text' as 'json' }
     );
   }

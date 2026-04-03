@@ -10,3 +10,4 @@ export * from './sources-selection-criterion.service';
 export * from './form.service';
 export * from './form-field.service';
 export * from './report.service';
+export * from './scopus.service';

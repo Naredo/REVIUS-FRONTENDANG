@@ -3,6 +3,6 @@ export interface SnowballingDTO {
   name: string;
   url?: string;
   source: string;
-  snowballingType: 'FORWARD' | 'BACKWARD';
+  snowballingType: 'FORWARD' | 'BACKWARDS';
   studyId?: number;
 }
