@@ -36,6 +36,19 @@ export class SnowballingService {
     return headers;
   }
 
+  private getAuthHeaders(): HttpHeaders {
+    let headers = new HttpHeaders();
+
+    if (this.isBrowser) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers = headers.set('Authorization', `Bearer ${token}`);
+      }
+    }
+
+    return headers;
+  }
+
   findAll(): Observable<SnowballingDTO[]> {
     return this.http.get<SnowballingDTO[]>(
       `${this.API_URL}all`,
@@ -55,6 +68,19 @@ export class SnowballingService {
       `${this.API_URL}${protocolId}/create`,
       snowballing,
       { headers: this.getHeaders() }
+    );
+  }
+
+  uploadDocument(protocolId: number, snowballingType: 'FORWARD' | 'BACKWARDS', source: string, file: File): Observable<SnowballingDTO> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('source', source);
+    formData.append('snowballingType', snowballingType);
+
+    return this.http.post<SnowballingDTO>(
+      `${this.API_URL}${protocolId}/upload-document`,
+      formData,
+      { headers: this.getAuthHeaders() }
     );
   }
 

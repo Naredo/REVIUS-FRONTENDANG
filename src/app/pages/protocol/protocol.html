@@ -315,6 +315,20 @@
       <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
         + Añadir Snowballing
       </button>
+
+      <input
+        #snowballingFileInput
+        type="file"
+        hidden
+        (change)="attachSnowballingDocument($event)"
+      />
+      <button
+        type="button"
+        class="btn-add"
+        (click)="snowballingFileInput.click()"
+        [disabled]="!protocolId || snowballingDocumentUploading || !newSnowballingSource.trim()">
+        {{ snowballingDocumentUploading ? 'Adjuntando...' : '+ Adjuntar documento' }}
+      </button>
     </div>
 
     <h3>Búsqueda en Scopus</h3>
@@ -348,6 +362,10 @@
           <option value="FORWARD">Snowballing hacia adelante</option>
           <option value="BACKWARDS">Snowballing hacia atrás</option>
         </select>
+
+        <button class="btn-add" (click)="addAllSnowballingsFromScopus()" [disabled]="!canAddAllSnowballingsFromScopus()">
+          + Añadir todos
+        </button>
       </div>
 
       <div *ngIf="scopusStudies.length > scopusPageSize" class="add-item-form">
@@ -367,14 +385,17 @@
           <div class="source-url" *ngIf="study.prismDoi">DOI: {{ study.prismDoi }}</div>
           <div class="source-url" *ngIf="study.prismCoverDate">{{ study.prismCoverDate }}</div>
         </div>
-        <button class="btn-add" (click)="addSnowballingFromScopus(study)">+ Añadir</button>
       </div>
     </div>
 
     <div class="items-list">
       <div *ngFor="let snowballing of snowballings" class="item-card">
         <div>
-          <strong>{{ snowballing.source }}</strong>
+          <strong>{{ snowballing.name }}</strong>
+          <div class="source-url">
+            Fuente: {{ snowballing.snowballingType === 'FORWARD' ? 'Hacia adelante' : 'Hacia atrás' }}
+          </div>
+          <div class="source-url">Origen: {{ snowballing.source }}</div>
         </div>
         <button class="btn-remove" (click)="removeSnowballing(snowballing)">✕</button>
       </div>
@@ -387,14 +408,27 @@
 
     <h3>Criterios de Selección de Estudios</h3>
     <div class="add-item-form">
+      <select [(ngModel)]="studyCriterionKind" class="form-select">
+        <option value="INCLUSION">Inclusión</option>
+        <option value="EXCLUSION">Exclusión</option>
+      </select>
+
+      <select [(ngModel)]="selectedStudyCriterion" class="form-select" (change)="onStudyCriterionPresetChange()">
+        <option value="">Selecciona un criterio</option>
+        <option *ngFor="let option of studyCriterionOptions" [value]="option.value">{{ option.label }}</option>
+        <option [value]="otherStudyCriterionValue">9 (Otros) Otro criterio (especificar)</option>
+      </select>
+
       <input
+        *ngIf="selectedStudyCriterion === otherStudyCriterionValue"
         type="text"
-        [(ngModel)]="newStudyCriterion"
-        placeholder="Nuevo criterio de selección de estudio"
+        [(ngModel)]="otherStudyCriterionText"
+        placeholder="Especifica el criterio"
         class="form-input"
         (keyup.enter)="addStudyCriterion()"
       />
-      <button class="btn-add" (click)="addStudyCriterion()" [disabled]="!newStudyCriterion.trim() || !protocolId">
+
+      <button class="btn-add" (click)="addStudyCriterion()" [disabled]="!canAddStudyCriterion() || !protocolId">
         + Añadir
       </button>
     </div>
@@ -494,142 +528,6 @@
         [disabled]="formsLoading">
         {{ formsLoading ? 'Guardando formularios...' : 'Guardar definición de formularios' }}
       </button>
-
-      <div class="forms-columns apply-forms-columns">
-        <div class="form-apply-card">
-          <h3>Aplicar formulario de calidad</h3>
-
-          <div class="form-group">
-            <label>Artículo</label>
-            <input
-              type="text"
-              [(ngModel)]="qualityArticleReference"
-              placeholder="Identificador o título del artículo"
-              class="form-input"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Decisión</label>
-            <select [(ngModel)]="qualityDecision" class="form-select">
-              <option value="INCLUDE">Incluir</option>
-              <option value="EXCLUDE">Excluir</option>
-            </select>
-          </div>
-
-          <div class="form-group" *ngFor="let field of qualityFormFields">
-            <label>{{ field.fieldName }}</label>
-            <ng-container [ngSwitch]="field.fieldType">
-              <select
-                *ngSwitchCase="'PICKONELIST'"
-                class="form-select"
-                [(ngModel)]="qualityAnswers[field.fieldName]">
-                <option value="" disabled hidden [selected]="!qualityAnswers[field.fieldName]">Selecciona una opción</option>
-                <option *ngFor="let option of yesNoOptions" [value]="option.value">{{ option.label }}</option>
-              </select>
-
-              <select
-                *ngSwitchCase="'NUMBERSCALE'"
-                class="form-select"
-                [(ngModel)]="qualityAnswers[field.fieldName]">
-                <option value="" disabled hidden [selected]="!qualityAnswers[field.fieldName]">Selecciona una puntuación</option>
-                <option *ngFor="let option of numericScaleOptions" [value]="option">{{ option }}</option>
-              </select>
-
-              <select
-                *ngSwitchCase="'LABELEDSCALE'"
-                class="form-select"
-                [(ngModel)]="qualityAnswers[field.fieldName]">
-                <option value="" disabled hidden [selected]="!qualityAnswers[field.fieldName]">Selecciona una valoración</option>
-                <option *ngFor="let option of labeledScaleOptions" [value]="option.value">{{ option.label }}</option>
-              </select>
-
-              <input
-                *ngSwitchDefault
-                type="text"
-                class="form-input"
-                [placeholder]="getFieldPlaceholder(field.fieldType)"
-                [(ngModel)]="qualityAnswers[field.fieldName]"
-              />
-            </ng-container>
-          </div>
-
-          <button class="btn-submit" type="button" (click)="applyQualityForm()">
-            Aplicar evaluación de calidad
-          </button>
-
-          <div class="items-list applied-list">
-            <div *ngFor="let item of qualityAppliedEntries" class="item-card">
-              <div>
-                <strong>{{ item.articleReference }}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-apply-card">
-          <h3>Aplicar formulario de extracción</h3>
-
-          <div class="form-group">
-            <label>Artículo</label>
-            <input
-              type="text"
-              [(ngModel)]="extractionArticleReference"
-              placeholder="Identificador o título del artículo"
-              class="form-input"
-            />
-          </div>
-
-          <div class="form-group" *ngFor="let field of extractionFormFields">
-            <label>{{ field.fieldName }}</label>
-            <ng-container [ngSwitch]="field.fieldType">
-              <select
-                *ngSwitchCase="'PICKONELIST'"
-                class="form-select"
-                [(ngModel)]="extractionAnswers[field.fieldName]">
-                <option value="" disabled hidden [selected]="!extractionAnswers[field.fieldName]">Selecciona una opción</option>
-                <option *ngFor="let option of yesNoOptions" [value]="option.value">{{ option.label }}</option>
-              </select>
-
-              <select
-                *ngSwitchCase="'NUMBERSCALE'"
-                class="form-select"
-                [(ngModel)]="extractionAnswers[field.fieldName]">
-                <option value="" disabled hidden [selected]="!extractionAnswers[field.fieldName]">Selecciona una puntuación</option>
-                <option *ngFor="let option of numericScaleOptions" [value]="option">{{ option }}</option>
-              </select>
-
-              <select
-                *ngSwitchCase="'LABELEDSCALE'"
-                class="form-select"
-                [(ngModel)]="extractionAnswers[field.fieldName]">
-                <option value="" disabled hidden [selected]="!extractionAnswers[field.fieldName]">Selecciona una valoración</option>
-                <option *ngFor="let option of labeledScaleOptions" [value]="option.value">{{ option.label }}</option>
-              </select>
-
-              <input
-                *ngSwitchDefault
-                type="text"
-                class="form-input"
-                [placeholder]="getFieldPlaceholder(field.fieldType)"
-                [(ngModel)]="extractionAnswers[field.fieldName]"
-              />
-            </ng-container>
-          </div>
-
-          <button class="btn-submit" type="button" (click)="applyExtractionForm()">
-            Aplicar extracción de datos
-          </button>
-
-          <div class="items-list applied-list">
-            <div *ngFor="let item of extractionAppliedEntries" class="item-card">
-              <div>
-                <strong>{{ item.articleReference }}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
