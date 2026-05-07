@@ -15,18 +15,64 @@
     color: #333;
   }
 
+  .header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
   .btn-back {
     padding: 0.5rem 1rem;
-    background-color: #6c757d;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s;
+  }
+
+  .btn-back {
+    background-color: #6c757d;
 
     &:hover {
       background-color: #5a6268;
     }
+  }
+}
+
+.phase-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: -1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+
+  .phase-label {
+    color: #6c757d;
+    font-weight: 500;
+  }
+
+  .phase-chip {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 999px;
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .phase-chip.active {
+    border-color: #007bff;
+    color: #007bff;
+    background: #ffffff;
+  }
+
+  .phase-arrow {
+    color: #6c757d;
+    font-weight: 700;
   }
 }
 
@@ -172,6 +218,14 @@
   border: 1px solid #e9ecef;
   border-radius: 4px;
   transition: all 0.2s;
+
+  &.clickable {
+    cursor: pointer;
+  }
+
+  &.selected {
+    border-color: #007bff;
+  }
 
   &:hover {
     background: #e9ecef;
@@ -338,6 +392,21 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.extraction-form-panel {
+  margin-top: 1rem;
+}
+
+.extraction-forms-wrapper {
+  .form-apply-card {
+    h4 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+  }
 }
 
 .form-builder-card,

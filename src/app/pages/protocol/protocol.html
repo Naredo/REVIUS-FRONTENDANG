@@ -1,7 +1,20 @@
 <div class="protocol-container">
   <div class="protocol-header">
-    <h1>Gestión de Protocolo</h1>
-    <button class="btn-back" (click)="goBack()">← Volver a Revisiones</button>
+    <h1>{{ pageTitle }}</h1>
+    <div class="header-actions">
+      <button class="btn-back" (click)="goBack()">← Volver a Revisiones</button>
+    </div>
+  </div>
+
+  <div *ngIf="hasExecutionPhase" class="phase-indicator">
+    <span class="phase-label">Fases:</span>
+    <span class="phase-chip" [class.active]="currentSection !== 'identification' && currentSection !== 'selection' && currentSection !== 'extraction'">Protocolo</span>
+    <span class="phase-arrow">→</span>
+    <span class="phase-chip" [class.active]="currentSection === 'identification'">Identificación</span>
+    <span class="phase-arrow">→</span>
+    <span class="phase-chip" [class.active]="currentSection === 'selection'">Selección</span>
+    <span class="phase-arrow">→</span>
+    <span class="phase-chip" [class.active]="currentSection === 'extraction'">Extracción</span>
   </div>
 
   <!-- Tabs de navegación -->
@@ -42,6 +55,266 @@
       (click)="changeSection('forms')">
       Formularios
     </button>
+    <button
+      *ngIf="hasExecutionPhase"
+      class="tab"
+      [class.active]="currentSection === 'identification'"
+      (click)="changeSection('identification')">
+      Identificación
+    </button>
+    <button
+      *ngIf="hasSelectionPhase"
+      class="tab"
+      [class.active]="currentSection === 'selection'"
+      (click)="changeSection('selection')">
+      Fase de selección ({{ pendingSnowballings.length }} pend. / {{ excludedSnowballings.length }} excl.)
+    </button>
+    <button
+      *ngIf="hasExtractionPhase"
+      class="tab"
+      [class.active]="currentSection === 'extraction'"
+      (click)="changeSection('extraction')">
+      Fase de extracción ({{ includedSnowballings.length }} incl.)
+    </button>
+  </div>
+
+  <!-- Sección: Identificación (Fase de ejecución) -->
+  <div *ngIf="currentSection === 'identification'" class="section">
+    <h2>Identificación</h2>
+
+    <h3>Añadir artículo</h3>
+    <div *ngIf="!protocolId" class="info-message">
+      Primero debes crear el protocolo en la sección "Información Básica"
+    </div>
+
+    <div *ngIf="protocolId" class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="newSnowballingSource"
+        placeholder="Fuente de origen"
+        class="form-input"
+      />
+      <select [(ngModel)]="newSnowballingType" class="form-select">
+        <option value="FORWARD">Hacia adelante</option>
+        <option value="BACKWARDS">Hacia atrás</option>
+      </select>
+      <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
+        + Añadir
+      </button>
+
+      <input
+        #snowballingFileInput
+        type="file"
+        hidden
+        (change)="attachSnowballingDocument($event)"
+      />
+      <button
+        type="button"
+        class="btn-add"
+        (click)="snowballingFileInput.click()"
+        [disabled]="!protocolId || snowballingDocumentUploading || !newSnowballingSource.trim()">
+        {{ snowballingDocumentUploading ? 'Adjuntando...' : '+ Adjuntar documento' }}
+      </button>
+    </div>
+
+    <h3>Búsqueda en Scopus</h3>
+    <div *ngIf="!protocolId" class="info-message">
+      Primero debes crear el protocolo en la sección "Información Básica"
+    </div>
+
+    <div *ngIf="protocolId" class="add-item-form">
+      <input
+        type="text"
+        [(ngModel)]="scopusQuery"
+        placeholder="Query Scopus (ej. TITLE-ABS-KEY(systematic review))"
+        class="form-input"
+      />
+      <input
+        type="text"
+        [(ngModel)]="scopusObservations"
+        placeholder="Observaciones (obligatorio)"
+        class="form-input"
+      />
+      <button class="btn-add" (click)="searchScopus()" [disabled]="scopusLoading || !scopusQuery.trim() || !scopusObservations.trim()">
+        {{ scopusLoading ? 'Buscando...' : 'Buscar' }}
+      </button>
+    </div>
+
+    <div *ngIf="scopusError" class="error-message">{{ scopusError }}</div>
+
+    <div *ngIf="scopusStudies.length > 0" class="items-list">
+      <div class="add-item-form">
+        <button class="btn-add" (click)="addAllSnowballingsFromScopus()" [disabled]="!canAddAllSnowballingsFromScopus()">
+          + Añadir todos
+        </button>
+      </div>
+
+      <div *ngIf="scopusStudies.length > scopusPageSize" class="add-item-form">
+        <button class="btn-add-small" (click)="prevScopusPage()" [disabled]="scopusPageIndex === 0">
+          Anterior
+        </button>
+        <button class="btn-add-small" (click)="nextScopusPage()" [disabled]="scopusPageIndex >= scopusTotalPages - 1">
+          Siguiente
+        </button>
+        <span>Página {{ scopusPageIndex + 1 }} / {{ scopusTotalPages }} ({{ scopusStudies.length }} resultados)</span>
+      </div>
+
+      <div *ngFor="let study of (pagedScopusStudies.length ? pagedScopusStudies : scopusStudies); trackBy: trackByScopusStudyId" class="item-card">
+        <div>
+          <strong>{{ study.dcTitle || study.dcIdentifier || study.eid }}</strong>
+          <div class="source-url" *ngIf="study.dcCreator">{{ study.dcCreator }}</div>
+          <div class="source-url" *ngIf="study.prismDoi">DOI: {{ study.prismDoi }}</div>
+          <div class="source-url" *ngIf="study.prismCoverDate">{{ study.prismCoverDate }}</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Artículos identificados</h3>
+    <div class="items-list">
+      <div *ngFor="let snowballing of snowballings" class="item-card">
+        <div>
+          <strong>{{ snowballing.name }}</strong>
+          <div class="source-url">
+            Fuente: {{ snowballing.snowballingType === 'FORWARD' ? 'Hacia adelante' : 'Hacia atrás' }}
+          </div>
+          <div class="source-url">Origen: {{ snowballing.source }}</div>
+        </div>
+        <button class="btn-remove" (click)="removeSnowballing(snowballing)">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Fase de selección -->
+  <div *ngIf="currentSection === 'selection'" class="section">
+    <h2>Fase de selección</h2>
+
+    <div *ngIf="snowballings.length === 0" class="empty-state">
+      No hay estudios añadidos todavía
+    </div>
+
+    <h3 *ngIf="pendingSnowballings.length > 0">Documentos por decidir</h3>
+    <div *ngIf="pendingSnowballings.length > 0" class="items-list">
+      <div *ngFor="let snowballing of pendingSnowballings" class="item-card">
+        <div>
+          <strong>{{ snowballing.name }}</strong>
+          <div class="source-url">Origen: {{ snowballing.source }}</div>
+        </div>
+
+        <div class="add-item-form">
+          <select
+            [(ngModel)]="snowballingSelectionDraftDecision[snowballing.id!]"
+            class="form-select"
+            (change)="onSnowballingSelectionDecisionDraftChange(snowballing)">
+            <option [ngValue]="null">Selecciona decisión</option>
+            <option [ngValue]="'INCLUDE'">Incluir</option>
+            <option [ngValue]="'EXCLUDE'">Excluir</option>
+          </select>
+
+          <select
+            *ngIf="snowballingSelectionDraftDecision[snowballing.id!] === 'EXCLUDE'"
+            [(ngModel)]="snowballingSelectionDraftExclusionCriterion[snowballing.id!]"
+            class="form-select">
+            <option [ngValue]="null">Selecciona criterio de exclusión</option>
+            <option *ngFor="let option of exclusionCriterionOptions" [ngValue]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+
+          <button
+            type="button"
+            class="btn-add"
+            [disabled]="!snowballingSelectionDraftDecision[snowballing.id!]"
+            (click)="applySnowballingSelectionDecision(snowballing)">
+            Aplicar decisión
+          </button>
+        </div>
+
+        <div *ngIf="snowballing.id && snowballingSelectionErrors[snowballing.id]" class="error-message">
+          {{ snowballingSelectionErrors[snowballing.id] }}
+        </div>
+      </div>
+    </div>
+
+    <h3 *ngIf="excludedSnowballings.length > 0">Documentos excluidos</h3>
+    <div *ngIf="excludedSnowballings.length > 0" class="items-list">
+      <div *ngFor="let snowballing of excludedSnowballings" class="item-card">
+        <div>
+          <strong>{{ snowballing.name }}</strong>
+          <div class="source-url">Origen: {{ snowballing.source }}</div>
+          <div class="source-url" *ngIf="snowballing.exclusionCriterion">Criterio: {{ snowballing.exclusionCriterion }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Fase de extracción -->
+  <div *ngIf="currentSection === 'extraction'" class="section" (click)="closeExtractionForms()">
+    <h2>Fase de extracción</h2>
+
+    <div *ngIf="includedSnowballings.length === 0" class="empty-state">
+      No hay documentos incluidos todavía
+    </div>
+
+    <div *ngIf="includedSnowballings.length > 0" class="items-list">
+      <div *ngFor="let snowballing of includedSnowballings" class="item-card clickable"
+        [class.selected]="selectedSnowballingForExtraction?.id === snowballing.id"
+        (click)="selectSnowballingForExtraction(snowballing); $event.stopPropagation()">
+        <div>
+          <strong>{{ snowballing.name }}</strong>
+          <div class="source-url">Origen: {{ snowballing.source }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="selectedSnowballingForExtraction" class="section extraction-form-panel" (click)="$event.stopPropagation()">
+      <h3>Formularios: {{ selectedSnowballingForExtraction.name }}</h3>
+
+      <div *ngIf="extractionFormsLoading" class="info-message">
+        Cargando formularios...
+      </div>
+
+      <div *ngIf="extractionFormsMessage" class="info-message">
+        {{ extractionFormsMessage }}
+      </div>
+
+      <div *ngIf="!extractionFormsLoading">
+        <div class="forms-wrapper extraction-forms-wrapper">
+          <div class="forms-columns">
+            <div class="form-apply-card">
+              <h4>Calidad</h4>
+              <div *ngFor="let field of qualityFormFields" class="form-group">
+                <label>{{ field.fieldName }}</label>
+                <input
+                  *ngIf="field.id"
+                  class="form-input"
+                  [type]="field.fieldType === 'NUMBERSCALE' ? 'number' : 'text'"
+                  [placeholder]="getFieldPlaceholder(field.fieldType)"
+                  [(ngModel)]="qualityFormValues[field.id]"
+                  [ngModelOptions]="{ standalone: true }" />
+              </div>
+            </div>
+
+            <div class="form-apply-card">
+              <h4>Extracción</h4>
+              <div *ngFor="let field of extractionFormFields" class="form-group">
+                <label>{{ field.fieldName }}</label>
+                <input
+                  *ngIf="field.id"
+                  class="form-input"
+                  [type]="field.fieldType === 'NUMBERSCALE' ? 'number' : 'text'"
+                  [placeholder]="getFieldPlaceholder(field.fieldType)"
+                  [(ngModel)]="extractionFormValues[field.id]"
+                  [ngModelOptions]="{ standalone: true }" />
+              </div>
+            </div>
+          </div>
+
+        <button type="button" class="btn-submit" (click)="saveSelectedSnowballingForms()" [disabled]="extractionFormsSaving">
+          {{ extractionFormsSaving ? 'Guardando...' : 'Guardar formularios' }}
+        </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Sección: Información Básica -->
@@ -277,7 +550,7 @@
         *ngIf="isOtherBibliographicSourceSelected"
         type="text"
         [(ngModel)]="newSourceNameOther"
-        placeholder="Especifica otra fuente bibliográfica"
+        placeholder="Especifica otra fuente"
         class="form-input"
       />
       <input
@@ -298,106 +571,6 @@
           <span *ngIf="source.url" class="source-url">{{ source.url }}</span>
         </div>
         <button class="btn-remove" (click)="removeSource(source)">✕</button>
-      </div>
-    </div>
-    <h3>Snowballing</h3>
-    <div class="add-item-form">
-      <input
-        type="text"
-        [(ngModel)]="newSnowballingSource"
-        placeholder="Fuente de origen"
-        class="form-input"
-      />
-      <select [(ngModel)]="newSnowballingType" class="form-select">
-        <option value="FORWARD">Hacia adelante</option>
-        <option value="BACKWARDS">Hacia atrás</option>
-      </select>
-      <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
-        + Añadir Snowballing
-      </button>
-
-      <input
-        #snowballingFileInput
-        type="file"
-        hidden
-        (change)="attachSnowballingDocument($event)"
-      />
-      <button
-        type="button"
-        class="btn-add"
-        (click)="snowballingFileInput.click()"
-        [disabled]="!protocolId || snowballingDocumentUploading || !newSnowballingSource.trim()">
-        {{ snowballingDocumentUploading ? 'Adjuntando...' : '+ Adjuntar documento' }}
-      </button>
-    </div>
-
-    <h3>Búsqueda en Scopus</h3>
-    <div *ngIf="!protocolId" class="info-message">
-      Primero debes crear el protocolo en la sección "Información Básica"
-    </div>
-
-    <div *ngIf="protocolId" class="add-item-form">
-      <input
-        type="text"
-        [(ngModel)]="scopusQuery"
-        placeholder="Query Scopus (ej. TITLE-ABS-KEY(systematic review))"
-        class="form-input"
-      />
-      <input
-        type="text"
-        [(ngModel)]="scopusObservations"
-        placeholder="Observaciones (obligatorio)"
-        class="form-input"
-      />
-      <button class="btn-add" (click)="searchScopus()" [disabled]="scopusLoading || !scopusQuery.trim() || !scopusObservations.trim()">
-        {{ scopusLoading ? 'Buscando...' : 'Buscar' }}
-      </button>
-    </div>
-
-    <div *ngIf="scopusError" class="error-message">{{ scopusError }}</div>
-
-    <div *ngIf="scopusStudies.length > 0" class="items-list">
-      <div class="add-item-form">
-        <select [(ngModel)]="scopusSnowballingType" class="form-select">
-          <option value="FORWARD">Snowballing hacia adelante</option>
-          <option value="BACKWARDS">Snowballing hacia atrás</option>
-        </select>
-
-        <button class="btn-add" (click)="addAllSnowballingsFromScopus()" [disabled]="!canAddAllSnowballingsFromScopus()">
-          + Añadir todos
-        </button>
-      </div>
-
-      <div *ngIf="scopusStudies.length > scopusPageSize" class="add-item-form">
-        <button class="btn-add-small" (click)="prevScopusPage()" [disabled]="scopusPageIndex === 0">
-          Anterior
-        </button>
-        <button class="btn-add-small" (click)="nextScopusPage()" [disabled]="scopusPageIndex >= scopusTotalPages - 1">
-          Siguiente
-        </button>
-        <span>Página {{ scopusPageIndex + 1 }} / {{ scopusTotalPages }} ({{ scopusStudies.length }} resultados)</span>
-      </div>
-
-      <div *ngFor="let study of (pagedScopusStudies.length ? pagedScopusStudies : scopusStudies); trackBy: trackByScopusStudyId" class="item-card">
-        <div>
-          <strong>{{ study.dcTitle || study.dcIdentifier || study.eid }}</strong>
-          <div class="source-url" *ngIf="study.dcCreator">{{ study.dcCreator }}</div>
-          <div class="source-url" *ngIf="study.prismDoi">DOI: {{ study.prismDoi }}</div>
-          <div class="source-url" *ngIf="study.prismCoverDate">{{ study.prismCoverDate }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="items-list">
-      <div *ngFor="let snowballing of snowballings" class="item-card">
-        <div>
-          <strong>{{ snowballing.name }}</strong>
-          <div class="source-url">
-            Fuente: {{ snowballing.snowballingType === 'FORWARD' ? 'Hacia adelante' : 'Hacia atrás' }}
-          </div>
-          <div class="source-url">Origen: {{ snowballing.source }}</div>
-        </div>
-        <button class="btn-remove" (click)="removeSnowballing(snowballing)">✕</button>
       </div>
     </div>
   </div>

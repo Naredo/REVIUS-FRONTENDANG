@@ -36,11 +36,11 @@ export class StudySelectionCriterionService {
     return headers;
   }
 
-  createAndSave(criterion: StudySelectionCriterionDTO, protocolId: number): Observable<void> {
-    return this.http.post<void>(
+  createAndSave(criterion: StudySelectionCriterionDTO, protocolId: number): Observable<StudySelectionCriterionDTO> {
+    return this.http.post<StudySelectionCriterionDTO>(
       `${this.API_URL}${protocolId}/create`,
       criterion,
-      { headers: this.getHeaders(), responseType: 'text' as 'json' }
+      { headers: this.getHeaders() }
     );
   }
 }

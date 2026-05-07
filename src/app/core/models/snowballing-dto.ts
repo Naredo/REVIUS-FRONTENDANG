@@ -5,4 +5,7 @@ export interface SnowballingDTO {
   source: string;
   snowballingType: 'FORWARD' | 'BACKWARDS';
   studyId?: number;
+
+  selectionDecision?: 'INCLUDE' | 'EXCLUDE' | null;
+  exclusionCriterion?: string | null;
 }

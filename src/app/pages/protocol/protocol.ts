@@ -24,7 +24,9 @@ import { SnowballingDTO } from '../../core/models/snowballing-dto';
 import { StudySelectionCriterionDTO } from '../../core/models/study-selection-criterion-dto';
 import { SourcesSelectionCriterionDTO } from '../../core/models/sources-selection-criterion-dto';
 import { FormFieldDTO } from '../../core/models/form-field-dto';
+import { FormInstanceDataDTO } from '../../core/models/form-instance-data-dto';
 import { ScopusService } from '../../core/services/scopus.service';
+import { FormInstanceService } from '../../core/services/form-instance.service';
 import { ScopusSearchDTO } from '../../core/models/scopus-search-dto';
 import { ScopusStudyDTO } from '../../core/models/scopus-study-dto';
 
@@ -39,18 +41,18 @@ export class ProtocolComponent implements OnInit {
 
   protocolForm: FormGroup;
   bibliographicSourceOptions: string[] = [
-    'URL',
-    'Artículo',
-    'Libro',
-    'Tesis y trabajos académicos',
-    'Informes y documentos oficiales'
+    'Scopus',
+    'Web Scholar',
+    'ACM',
+    'Snowballing hacia adelante',
+    'Snowballing hacia atrás'
   ];
   otherBibliographicSourceValue = 'otro';
   slrId: number = 0;
   protocolId?: number;
   loading = false;
   submitError = '';
-  currentSection: 'basic' | 'keywords' | 'questions' | 'sources' | 'criteria' | 'forms' = 'basic';
+  currentSection: 'basic' | 'keywords' | 'questions' | 'sources' | 'criteria' | 'forms' | 'identification' | 'selection' | 'extraction' = 'basic';
   
   // Listas de entidades
   keywords: KeywordDTO[] = [];
@@ -88,15 +90,85 @@ export class ProtocolComponent implements OnInit {
 
   studyCriterionKind: 'INCLUSION' | 'EXCLUSION' = 'INCLUSION';
 
+  snowballingSelectionErrors: Record<number, string> = {};
+  snowballingSelectionDraftDecision: Record<number, 'INCLUDE' | 'EXCLUDE' | null> = {};
+  snowballingSelectionDraftExclusionCriterion: Record<number, string | null> = {};
+
+  selectedSnowballingForExtraction: SnowballingDTO | null = null;
+  extractionFormsLoading = false;
+  extractionFormsSaving = false;
+  extractionFormsMessage = '';
+  qualityFormValues: Record<number, string | null> = {};
+  extractionFormValues: Record<number, string | null> = {};
+
+  get hasSelectionPhase(): boolean {
+    return (this.snowballings?.length ?? 0) > 0;
+  }
+
+  get hasExecutionPhase(): boolean {
+    return !!this.protocolId;
+  }
+
+  get includedSnowballings(): SnowballingDTO[] {
+    return (this.snowballings ?? []).filter(s => s?.selectionDecision === 'INCLUDE');
+  }
+
+  get excludedSnowballings(): SnowballingDTO[] {
+    return (this.snowballings ?? []).filter(s => s?.selectionDecision === 'EXCLUDE');
+  }
+
+  get pendingSnowballings(): SnowballingDTO[] {
+    return (this.snowballings ?? []).filter(s => !s?.selectionDecision);
+  }
+
+  get hasExtractionPhase(): boolean {
+    return this.includedSnowballings.length > 0;
+  }
+
+  get pageTitle(): string {
+    return (this.currentSection === 'identification' || this.currentSection === 'selection' || this.currentSection === 'extraction')
+      ? 'Fase de ejecución'
+      : 'Gestión de Protocolo';
+  }
+
+  get exclusionCriterionOptions(): Array<{ value: string; label: string }> {
+    const options: Array<{ value: string; label: string }> = [];
+    const seen = new Set<string>();
+
+    for (const opt of this.studyCriterionOptions.filter(o => o.kind === 'EXCLUSION')) {
+      if (!seen.has(opt.value)) {
+        options.push({ value: opt.value, label: opt.label });
+        seen.add(opt.value);
+      }
+    }
+
+    const criteria = this.studyCriteria ?? [];
+    for (const criterion of criteria) {
+      const raw = (criterion?.criterion ?? '').toString();
+      const prefixMatch = raw.match(/^\s*(Exclusi[oó]n)\s*:\s*(.+)$/i);
+      if (!prefixMatch) continue;
+
+      const value = (prefixMatch[2] ?? '').trim();
+      if (!value) continue;
+
+      if (!seen.has(value)) {
+        options.push({ value, label: value });
+        seen.add(value);
+      }
+    }
+
+    return options;
+  }
+
   studyCriterionOptions: Array<{ value: string; label: string; kind: 'INCLUSION' | 'EXCLUSION' }> = [
     {
-      value: '1 I El título, la lista de palabras clave y el resumen dejan explícito que el artículo está relacionado con [tema].',
-      label: '1 El título, palabras clave y resumen indican relación con [tema]',
+      value: '1 I El título, la lista de palabras clave y el resumen dejan explícito que el artículo está relacionado con tema.',
+      label: '1 El título, palabras clave y resumen indican relación con tema',
       kind: 'INCLUSION'
     },
     {
-      value: '2 I El artículo presenta contribuciones relacionadas con [tema], por ejemplo: [lista de temas].',
-      label: '2 Presenta contribuciones relacionadas con [tema]',
+      value: '2 I El artículo presenta contribuciones relacionadas con tema, por ejemplo: lista de temas.',
+      label: '2 Presenta contribuciones relacionadas con tema',
       kind: 'INCLUSION'
     },
     {
@@ -105,8 +177,8 @@ export class ProtocolComponent implements OnInit {
       kind: 'EXCLUSION'
     },
     {
-      value: '4 E El artículo no pertenece al dominio [nombre(s) del dominio].',
-      label: '4 No pertenece al dominio [dominio]',
+      value: '4 E El artículo no pertenece al dominio nombre(s) del dominio.',
+      label: '4 No pertenece al dominio dominio',
       kind: 'EXCLUSION'
     },
     {
@@ -115,8 +187,8 @@ export class ProtocolComponent implements OnInit {
       kind: 'EXCLUSION'
     },
     {
-      value: '6 E El artículo se relaciona con [tema] únicamente en los trabajos relacionados.',
-      label: '6 Relación con [tema] solo en trabajos relacionados',
+      value: '6 E El artículo se relaciona con tema únicamente en los trabajos relacionados.',
+      label: '6 Relación con tema solo en trabajos relacionados',
       kind: 'EXCLUSION'
     },
     {
@@ -195,6 +267,7 @@ export class ProtocolComponent implements OnInit {
   constructor(
     private protocolService: ProtocolService,
     private formFieldService: FormFieldService,
+    private formInstanceService: FormInstanceService,
     private keywordService: KeywordService,
     private mainQuestionService: MainQuestionService,
     private secondaryQuestionService: SecondaryQuestionService,
@@ -277,12 +350,176 @@ export class ProtocolComponent implements OnInit {
     });
   }
 
-  changeSection(section: 'basic' | 'keywords' | 'questions' | 'sources' | 'criteria' | 'forms') {
+  changeSection(section: 'basic' | 'keywords' | 'questions' | 'sources' | 'criteria' | 'forms' | 'identification' | 'selection' | 'extraction') {
     this.currentSection = section;
 
     if (section === 'forms' && this.protocolId) {
       this.loadFormDefinitions();
     }
+
+    if (section === 'selection') {
+      this.initSnowballingSelectionDrafts();
+    }
+  }
+
+  private initSnowballingSelectionDrafts() {
+    for (const snowballing of this.pendingSnowballings) {
+      if (!snowballing?.id) continue;
+
+      const id = snowballing.id;
+
+      if (!(id in this.snowballingSelectionDraftDecision)) {
+        this.snowballingSelectionDraftDecision[id] = null;
+      }
+
+      if (!(id in this.snowballingSelectionDraftExclusionCriterion)) {
+        this.snowballingSelectionDraftExclusionCriterion[id] = null;
+      }
+    }
+  }
+
+  onSnowballingSelectionDecisionDraftChange(snowballing: SnowballingDTO) {
+    if (!snowballing?.id) return;
+
+    const id = snowballing.id;
+    this.snowballingSelectionErrors[id] = '';
+
+    const decision = this.snowballingSelectionDraftDecision[id];
+    if (decision === 'INCLUDE') {
+      this.snowballingSelectionDraftExclusionCriterion[id] = null;
+    }
+  }
+
+  applySnowballingSelectionDecision(snowballing: SnowballingDTO) {
+    if (!snowballing?.id) return;
+
+    const id = snowballing.id;
+    this.snowballingSelectionErrors[id] = '';
+
+    const draftDecision = this.snowballingSelectionDraftDecision[id];
+    const draftCriterionRaw = this.snowballingSelectionDraftExclusionCriterion[id];
+    const draftCriterion = (draftCriterionRaw ?? '').toString().trim();
+
+    if (!draftDecision) {
+      this.snowballingSelectionErrors[id] = 'Selecciona incluir o excluir.';
+      return;
+    }
+
+    if (draftDecision === 'EXCLUDE' && !draftCriterion) {
+      this.snowballingSelectionErrors[id] = 'Debes seleccionar un criterio de exclusión.';
+      return;
+    }
+
+    const updated: SnowballingDTO = {
+      ...snowballing,
+      selectionDecision: draftDecision,
+      exclusionCriterion: draftDecision === 'EXCLUDE' ? draftCriterion : null
+    };
+
+    this.persistSnowballingSelection(updated);
+  }
+
+  private persistSnowballingSelection(snowballing: SnowballingDTO) {
+    this.snowballingService.update(snowballing).subscribe({
+      next: (updated) => {
+        if (!updated?.id) return;
+        this.snowballings = (this.snowballings ?? []).map(s => (s.id === updated.id ? updated : s));
+        delete this.snowballingSelectionErrors[updated.id];
+
+        // Reset drafts for this snowballing after applying.
+        this.snowballingSelectionDraftDecision[updated.id] = null;
+        this.snowballingSelectionDraftExclusionCriterion[updated.id] = null;
+
+        // If this was included, guide the user to the extraction phase.
+        if (updated.selectionDecision === 'INCLUDE') {
+          this.currentSection = 'extraction';
+        }
+
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error actualizando decisión de selección:', err);
+        const id = snowballing.id!;
+        this.snowballingSelectionErrors[id] = 'No se pudo guardar la decisión. Revisa el criterio.';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  selectSnowballingForExtraction(snowballing: SnowballingDTO) {
+    if (!this.protocolId || !snowballing?.id) return;
+
+    this.selectedSnowballingForExtraction = snowballing;
+    this.extractionFormsLoading = true;
+    this.extractionFormsMessage = '';
+
+    forkJoin({
+      quality: this.formInstanceService.getFormInstanceData(this.protocolId, snowballing.id, 'QUALITY'),
+      extraction: this.formInstanceService.getFormInstanceData(this.protocolId, snowballing.id, 'EXTRACTION')
+    }).subscribe({
+      next: ({ quality, extraction }) => {
+        this.qualityFormValues = { ...(quality?.values ?? {}) };
+        this.extractionFormValues = { ...(extraction?.values ?? {}) };
+        this.extractionFormsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error cargando instancias de formularios:', err);
+        this.extractionFormsLoading = false;
+        this.extractionFormsMessage = 'No se pudieron cargar los formularios del documento';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  saveSelectedSnowballingForms() {
+    if (!this.protocolId || !this.selectedSnowballingForExtraction?.id) return;
+
+    const snowballingId = this.selectedSnowballingForExtraction.id;
+
+    this.extractionFormsSaving = true;
+    this.extractionFormsMessage = '';
+
+    forkJoin({
+      quality: this.formInstanceService.saveFormInstanceData(
+        this.protocolId,
+        snowballingId,
+        'QUALITY',
+        { values: this.qualityFormValues }
+      ),
+      extraction: this.formInstanceService.saveFormInstanceData(
+        this.protocolId,
+        snowballingId,
+        'EXTRACTION',
+        { values: this.extractionFormValues }
+      )
+    }).subscribe({
+      next: ({ quality, extraction }) => {
+        this.qualityFormValues = { ...(quality?.values ?? {}) };
+        this.extractionFormValues = { ...(extraction?.values ?? {}) };
+        this.extractionFormsSaving = false;
+        this.extractionFormsMessage = 'Formularios guardados correctamente';
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error guardando instancias de formularios:', err);
+        this.extractionFormsSaving = false;
+        this.extractionFormsMessage = 'No se pudieron guardar los formularios';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  closeExtractionForms() {
+    if (!this.selectedSnowballingForExtraction) return;
+
+    this.selectedSnowballingForExtraction = null;
+    this.extractionFormsLoading = false;
+    this.extractionFormsSaving = false;
+    this.extractionFormsMessage = '';
+    this.qualityFormValues = {};
+    this.extractionFormValues = {};
+    this.cdr.markForCheck();
   }
 
   private loadFormDefinitions() {
@@ -881,9 +1118,15 @@ export class ProtocolComponent implements OnInit {
   canAddStudyCriterion(): boolean {
     if (!this.selectedStudyCriterion) return false;
     if (this.selectedStudyCriterion === this.otherStudyCriterionValue) {
-      return !!this.otherStudyCriterionText.trim();
+      const text = this.otherStudyCriterionText.trim();
+      if (!text) return false;
+      const kindLabel = this.studyCriterionKind === 'INCLUSION' ? 'Inclusión' : 'Exclusión';
+      const formatted = `${kindLabel}: ${text}`.toLowerCase();
+      return !(this.studyCriteria ?? []).some(c => (c.criterion ?? '').toLowerCase() === formatted);
     }
-    return true;
+    const kindLabel = this.studyCriterionKind === 'INCLUSION' ? 'Inclusión' : 'Exclusión';
+    const formatted = `${kindLabel}: ${this.selectedStudyCriterion}`.toLowerCase();
+    return !(this.studyCriteria ?? []).some(c => (c.criterion ?? '').toLowerCase() === formatted);
   }
 
   // ============ STUDY SELECTION CRITERIA ============
@@ -897,19 +1140,25 @@ export class ProtocolComponent implements OnInit {
     const kindLabel = this.studyCriterionKind === 'INCLUSION' ? 'Inclusión' : 'Exclusión';
     const formattedCriterion = `${kindLabel}: ${criterionText}`;
 
-    const criterion: StudySelectionCriterionDTO = { 
-      criterion: formattedCriterion
+    const criterion: StudySelectionCriterionDTO = {
+      criterion: formattedCriterion,
+      studyCriterionType: this.studyCriterionKind
     };
     this.studySelectionCriterionService.createAndSave(criterion, this.protocolId).subscribe({
-      next: () => {
-        this.studyCriteria.push(criterion);
+      next: (created) => {
+        this.studyCriteria.push(created ?? criterion);
         this.selectedStudyCriterion = '';
         this.otherStudyCriterionText = '';
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error añadiendo criterio de estudio:', err);
-        alert('Error al añadir criterio de selección de estudio');
+        const msg = (typeof err?.error === 'string' && err.error.trim())
+          ? err.error
+          : (typeof err?.message === 'string' && err.message.trim())
+            ? err.message
+            : 'Error al añadir criterio de selección de estudio';
+        alert(msg);
       }
     });
   }
@@ -929,7 +1178,12 @@ export class ProtocolComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error añadiendo criterio de fuente:', err);
-        alert('Error al añadir criterio de selección de fuente');
+        const msg = (typeof err?.error === 'string' && err.error.trim())
+          ? err.error
+          : (typeof err?.message === 'string' && err.message.trim())
+            ? err.message
+            : 'Error al añadir criterio de selección de fuentes';
+        alert(msg);
       }
     });
   }

@@ -7,7 +7,8 @@ import { ReviewService, SLRDTO } from '../../reviews';
 import { UserService } from '../../core/auth/user.service';
 import { UserDTO } from '../../core/models/user-dto';
 import { DataRefreshService } from '../../shared/services/data-refresh.service';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-reviews',
@@ -154,14 +155,90 @@ export class ReviewsComponent implements OnInit, OnDestroy {
         }
         this.selectedReviewDetail = detail;
         this.detailLoading = false;
+        this.hydrateSelectedReviewUsers();
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error cargando detalles:', err);
         this.selectedReviewDetail = review;
         this.detailLoading = false;
+        this.hydrateSelectedReviewUsers();
         this.cdr.markForCheck();
       }
+    });
+  }
+
+  private hydrateSelectedReviewUsers() {
+    const detail = this.selectedReviewDetail;
+    if (!detail) return;
+
+    const hasDisplayName = (u: any): boolean => {
+      const userName = (u?.userName ?? u?.username ?? '').toString().trim();
+      const completeName = (u?.completeName ?? u?.fullName ?? '').toString().trim();
+      return !!(completeName || userName);
+    };
+
+    // Principal
+    const principalIdRaw = detail.principalResearcher?.id;
+    const principalId = typeof principalIdRaw === 'number' ? principalIdRaw : Number(principalIdRaw);
+    if (detail.principalResearcher?.id && !hasDisplayName(detail.principalResearcher) && Number.isFinite(principalId)) {
+      this.userService.getUserById(principalId).pipe(
+        catchError((err) => {
+          console.warn('No se pudo hidratar principalResearcher desde user-service', err);
+          return of(null);
+        })
+      ).subscribe((user) => {
+        if (!user || !this.selectedReviewDetail?.principalResearcher) return;
+        this.selectedReviewDetail.principalResearcher = {
+          ...this.selectedReviewDetail.principalResearcher,
+          userName: user.userName,
+          completeName: user.completeName,
+          email: user.email
+        };
+        this.cdr.markForCheck();
+      });
+    }
+
+    // Collaborators
+    const collaborators = (detail.collaboratorResearchers ?? []) as any[];
+    const collaboratorsToHydrate = collaborators
+      .map((c, index) => ({ c, index }))
+      .filter(({ c }) => c?.id && !hasDisplayName(c));
+
+    if (collaboratorsToHydrate.length === 0) return;
+
+    const requests = collaboratorsToHydrate.map(({ c }) => {
+      const idRaw = c.id;
+      const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
+      if (!Number.isFinite(id)) return of(null);
+
+      return this.userService.getUserById(id).pipe(
+        catchError((err) => {
+          console.warn('No se pudo hidratar colaborador desde user-service', err);
+          return of(null);
+        })
+      );
+    });
+
+    forkJoin(requests).subscribe((users) => {
+      if (!this.selectedReviewDetail?.collaboratorResearchers) return;
+
+      const updated = [...this.selectedReviewDetail.collaboratorResearchers];
+      for (let i = 0; i < collaboratorsToHydrate.length; i++) {
+        const { index } = collaboratorsToHydrate[i];
+        const user = users[i] as UserDTO | null;
+        if (!user) continue;
+
+        updated[index] = {
+          ...updated[index],
+          userName: user.userName,
+          completeName: user.completeName,
+          email: user.email
+        };
+      }
+
+      this.selectedReviewDetail.collaboratorResearchers = updated;
+      this.cdr.markForCheck();
     });
   }
 
@@ -390,6 +467,9 @@ export class ReviewsComponent implements OnInit, OnDestroy {
       this.reviewService.deleteSLR(reviewId).subscribe({
         next: () => {
           this.reviews = this.reviews.filter(r => r.id !== reviewId);
+          if (this.selectedReviewDetail?.id === reviewId) {
+            this.closeDetailPanel();
+          }
           this.cdr.markForCheck();
         },
         error: (err) => {
