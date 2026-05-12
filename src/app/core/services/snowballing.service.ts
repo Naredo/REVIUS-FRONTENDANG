@@ -71,11 +71,46 @@ export class SnowballingService {
     );
   }
 
-  uploadDocument(protocolId: number, snowballingType: 'FORWARD' | 'BACKWARDS', source: string, file: File): Observable<SnowballingDTO> {
+  uploadDocument(
+    protocolId: number,
+    snowballingType: 'FORWARD' | 'BACKWARDS',
+    source: string,
+    file: File,
+    studyMetadata?: Partial<SnowballingDTO>
+  ): Observable<SnowballingDTO> {
     const formData = new FormData();
     formData.append('file', file, file.name);
     formData.append('source', source);
     formData.append('snowballingType', snowballingType);
+
+    const addIfPresent = (key: string, value: unknown) => {
+      if (value === null || value === undefined) return;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) return;
+        formData.append(key, trimmed);
+        return;
+      }
+
+      if (typeof value === 'boolean') {
+        formData.append(key, value ? 'true' : 'false');
+        return;
+      }
+
+      // numbers or other scalar values
+      formData.append(key, String(value));
+    };
+
+    if (studyMetadata) {
+      // Keep only the fields captured in the Identification form.
+      addIfPresent('dcTitle', studyMetadata.dcTitle);
+      addIfPresent('dcCreator', studyMetadata.dcCreator);
+      addIfPresent('prismCoverDate', studyMetadata.prismCoverDate);
+      addIfPresent('subtypeDescription', studyMetadata.subtypeDescription);
+      addIfPresent('prismUrl', studyMetadata.prismUrl);
+      addIfPresent('prismPublicationName', studyMetadata.prismPublicationName);
+      addIfPresent('prismDoi', studyMetadata.prismDoi);
+    }
 
     return this.http.post<SnowballingDTO>(
       `${this.API_URL}${protocolId}/upload-document`,

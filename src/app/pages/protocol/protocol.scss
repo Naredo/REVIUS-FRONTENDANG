@@ -203,6 +203,53 @@
   }
 }
 
+/* Snowballing Identification form: aligned, responsive, consistent control sizing */
+.snowballing-add-form {
+  margin-bottom: 1.5rem;
+
+  .snowballing-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .form-input,
+  .form-select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .snowballing-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-top: 1rem;
+  }
+
+  .snowballing-actions .form-select {
+    flex: 1;
+    min-width: 260px;
+  }
+
+  @media (max-width: 720px) {
+    .snowballing-fields {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
 .items-list {
   display: flex;
   flex-direction: column;

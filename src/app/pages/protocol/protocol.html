@@ -88,34 +88,135 @@
     </div>
 
     <div *ngIf="protocolId" class="add-item-form">
-      <input
-        type="text"
-        [(ngModel)]="newSnowballingSource"
-        placeholder="Fuente de origen"
-        class="form-input"
-      />
-      <select [(ngModel)]="newSnowballingType" class="form-select">
-        <option value="FORWARD">Hacia adelante</option>
-        <option value="BACKWARDS">Hacia atrás</option>
-      </select>
-      <button class="btn-add" (click)="addSnowballing()" [disabled]="!newSnowballingSource.trim() || !protocolId">
-        + Añadir
-      </button>
-
-      <input
-        #snowballingFileInput
-        type="file"
-        hidden
-        (change)="attachSnowballingDocument($event)"
-      />
-      <button
-        type="button"
-        class="btn-add"
-        (click)="snowballingFileInput.click()"
-        [disabled]="!protocolId || snowballingDocumentUploading || !newSnowballingSource.trim()">
-        {{ snowballingDocumentUploading ? 'Adjuntando...' : '+ Adjuntar documento' }}
+      <button type="button" class="btn-add" (click)="toggleSnowballingForm()">
+        {{ snowballingFormOpen ? '− Ocultar formulario' : '+ Añadir artículo' }}
       </button>
     </div>
+
+    <form *ngIf="protocolId && snowballingFormOpen" #snowballingForm="ngForm" class="snowballing-add-form" (ngSubmit)="addSnowballing()">
+      <div class="snowballing-fields">
+        <label>
+          Origen (fuente de snowballing)
+          <input
+            type="text"
+            name="snowballingOrigin"
+            required
+            [(ngModel)]="newSnowballingSource"
+            placeholder="Ej. Artículo semilla / referencia de origen"
+            class="form-input"
+          />
+        </label>
+
+        <label>
+          Título
+          <input
+            type="text"
+            name="snowballingTitle"
+            required
+            [(ngModel)]="newSnowballingStudy.dcTitle"
+            placeholder="Título del estudio"
+            class="form-input"
+          />
+        </label>
+
+        <label>
+          Autor(es)
+          <input
+            type="text"
+            name="snowballingAuthors"
+            required
+            [(ngModel)]="newSnowballingStudy.dcCreator"
+            placeholder="Ej. Apellido, Nombre; ..."
+            class="form-input"
+          />
+        </label>
+
+        <label>
+          Año
+          <input
+            type="number"
+            name="snowballingYear"
+            required
+            [(ngModel)]="newSnowballingStudy.prismCoverDate"
+            placeholder="YYYY"
+            class="form-input"
+            min="1900"
+            max="2100"
+          />
+        </label>
+
+        <label>
+          Tipo
+          <input
+            type="text"
+            name="snowballingTypeDescription"
+            required
+            [(ngModel)]="newSnowballingStudy.subtypeDescription"
+            placeholder="Ej. Journal Article, Conference Paper..."
+            class="form-input"
+          />
+        </label>
+
+        <label>
+          URL fuente
+          <input
+            type="text"
+            name="snowballingSourceUrl"
+            [(ngModel)]="newSnowballingStudy.prismUrl"
+            placeholder="https://..."
+            class="form-input"
+          />
+        </label>
+
+        <label>
+          Lugar
+          <input
+            type="text"
+            name="snowballingVenue"
+            required
+            [(ngModel)]="newSnowballingStudy.prismPublicationName"
+            placeholder="Ej. IEEE TSE, ICSE..."
+            class="form-input"
+          />
+        </label>
+
+        <label>
+          DOI
+          <input
+            type="text"
+            name="snowballingDoi"
+            required
+            [(ngModel)]="newSnowballingStudy.prismDoi"
+            placeholder="10.xxxx/xxxxx"
+            class="form-input"
+          />
+        </label>
+      </div>
+
+      <div class="snowballing-actions">
+        <select name="snowballingDirection" [(ngModel)]="newSnowballingType" class="form-select">
+          <option value="FORWARD">Hacia adelante</option>
+          <option value="BACKWARDS">Hacia atrás</option>
+        </select>
+        <button class="btn-add" type="submit" [disabled]="!protocolId || snowballingForm.invalid">
+          + Añadir
+        </button>
+
+        <input
+          #snowballingFileInput
+          type="file"
+          hidden
+          (change)="attachSnowballingDocument($event)"
+        />
+        <button
+          type="button"
+          class="btn-add"
+          (click)="snowballingFileInput.click()"
+          [disabled]="!protocolId || snowballingDocumentUploading || snowballingForm.invalid">
+          {{ snowballingDocumentUploading ? 'Adjuntando...' : '+ Adjuntar documento' }}
+        </button>
+      </div>
+    </form>
 
     <h3>Búsqueda en Scopus</h3>
     <div *ngIf="!protocolId" class="info-message">

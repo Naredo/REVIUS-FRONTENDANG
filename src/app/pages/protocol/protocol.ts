@@ -42,7 +42,7 @@ export class ProtocolComponent implements OnInit {
   protocolForm: FormGroup;
   bibliographicSourceOptions: string[] = [
     'Scopus',
-    'Web Scholar',
+    'Google Scholar',
     'ACM',
     'Snowballing hacia adelante',
     'Snowballing hacia atrás'
@@ -76,7 +76,9 @@ export class ProtocolComponent implements OnInit {
   newSourceUrl: string = '';
   newSnowballingSource: string = '';
   newSnowballingType: 'FORWARD' | 'BACKWARDS' = 'FORWARD';
+  newSnowballingStudy: Partial<SnowballingDTO> = {};
   snowballingDocumentUploading = false;
+  snowballingFormOpen = false;
 
   scopusQuery = '';
   scopusObservations = '';
@@ -703,7 +705,15 @@ export class ProtocolComponent implements OnInit {
       name: title,
       source: 'Scopus',
       snowballingType: this.scopusSnowballingType,
-      studyId
+      studyId,
+
+      dcTitle: study.dcTitle,
+      dcCreator: study.dcCreator,
+      prismCoverDate: study.prismCoverDate,
+      subtypeDescription: study.subtypeDescription ?? study.prismAggregationType,
+      prismUrl: study.prismUrl,
+      prismPublicationName: study.prismPublicationName,
+      prismDoi: study.prismDoi
     };
 
     this.snowballingService.createAndSave(snowballing, this.protocolId).subscribe({
@@ -753,7 +763,15 @@ export class ProtocolComponent implements OnInit {
         name: title,
         source: 'Scopus',
         snowballingType: this.scopusSnowballingType,
-        studyId
+        studyId,
+
+        dcTitle: study.dcTitle,
+        dcCreator: study.dcCreator,
+        prismCoverDate: study.prismCoverDate,
+        subtypeDescription: study.subtypeDescription ?? study.prismAggregationType,
+        prismUrl: study.prismUrl,
+        prismPublicationName: study.prismPublicationName,
+        prismDoi: study.prismDoi
       };
 
       return this.snowballingService.createAndSave(snowballing, this.protocolId!).pipe(
@@ -1030,20 +1048,57 @@ export class ProtocolComponent implements OnInit {
   }
 
   // ============ SNOWBALLING ============
+  toggleSnowballingForm() {
+    this.snowballingFormOpen = !this.snowballingFormOpen;
+  }
+
+  private resetSnowballingForm() {
+    this.newSnowballingSource = '';
+    this.newSnowballingType = 'FORWARD';
+    this.newSnowballingStudy = {};
+    this.snowballingFormOpen = false;
+  }
+
   addSnowballing() {
     if (!this.newSnowballingSource.trim() || !this.protocolId) return;
 
-    const sourceValue = this.newSnowballingSource.trim();
+    const origin = this.newSnowballingSource.trim();
+    const title = (this.newSnowballingStudy.dcTitle ?? '').toString().trim();
+
+    const dcCreator = (this.newSnowballingStudy.dcCreator ?? '').toString().trim();
+    const year = (this.newSnowballingStudy.prismCoverDate ?? '').toString().trim();
+    const subtypeDescription = (this.newSnowballingStudy.subtypeDescription ?? '').toString().trim();
+    const prismUrl = (this.newSnowballingStudy.prismUrl ?? '').toString().trim();
+    const prismPublicationName = (this.newSnowballingStudy.prismPublicationName ?? '').toString().trim();
+    const prismDoi = (this.newSnowballingStudy.prismDoi ?? '').toString().trim();
+
+    const yearNumber = Number.parseInt(year, 10);
+    const yearIsValid = Number.isFinite(yearNumber) && yearNumber >= 1900 && yearNumber <= 2100;
+    if (!origin || !title || !dcCreator || !year || !yearIsValid || !subtypeDescription || !prismPublicationName || !prismDoi) {
+      alert('Completa todos los campos obligatorios antes de añadir.');
+      return;
+    }
+
+    const studyFields: Partial<SnowballingDTO> = {
+      dcTitle: title || undefined,
+      dcCreator: dcCreator || undefined,
+      prismCoverDate: year || undefined,
+      subtypeDescription: subtypeDescription || undefined,
+      prismUrl: prismUrl || undefined,
+      prismPublicationName: prismPublicationName || undefined,
+      prismDoi: prismDoi || undefined
+    };
 
     const snowballing: SnowballingDTO = {
-      name: sourceValue,
-      source: sourceValue,
-      snowballingType: this.newSnowballingType
+      name: title || origin,
+      source: origin,
+      snowballingType: this.newSnowballingType,
+      ...studyFields
     };
     this.snowballingService.createAndSave(snowballing, this.protocolId).subscribe({
       next: (created) => {
         this.snowballings.push(created);
-        this.newSnowballingSource = '';
+        this.resetSnowballingForm();
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -1063,17 +1118,29 @@ export class ProtocolComponent implements OnInit {
     }
 
     const origin = this.newSnowballingSource.trim();
-    if (!origin) {
-      alert('Indica primero la fuente de origen');
+    const title = (this.newSnowballingStudy.dcTitle ?? '').toString().trim();
+    const dcCreator = (this.newSnowballingStudy.dcCreator ?? '').toString().trim();
+    const year = (this.newSnowballingStudy.prismCoverDate ?? '').toString().trim();
+    const subtypeDescription = (this.newSnowballingStudy.subtypeDescription ?? '').toString().trim();
+    const prismUrl = (this.newSnowballingStudy.prismUrl ?? '').toString().trim();
+    const prismPublicationName = (this.newSnowballingStudy.prismPublicationName ?? '').toString().trim();
+    const prismDoi = (this.newSnowballingStudy.prismDoi ?? '').toString().trim();
+
+    const yearNumber = Number.parseInt(year, 10);
+    const yearIsValid = Number.isFinite(yearNumber) && yearNumber >= 1900 && yearNumber <= 2100;
+    if (!origin || !title || !dcCreator || !year || !yearIsValid || !subtypeDescription || !prismPublicationName || !prismDoi) {
+      alert('Completa todos los campos obligatorios antes de adjuntar el documento.');
       input.value = '';
       return;
     }
 
     this.snowballingDocumentUploading = true;
-    this.snowballingService.uploadDocument(this.protocolId, this.newSnowballingType, origin, file).subscribe({
+    this.snowballingService
+      .uploadDocument(this.protocolId, this.newSnowballingType, origin, file, this.newSnowballingStudy)
+      .subscribe({
       next: (created) => {
         this.snowballings.push(created);
-        this.newSnowballingSource = '';
+        this.resetSnowballingForm();
         alert('Documento adjuntado correctamente');
         this.cdr.markForCheck();
       },
