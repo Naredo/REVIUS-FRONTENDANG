@@ -3,18 +3,15 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { KeywordDTO } from '../models/keyword-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class KeywordService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/keyword/'
-    : 'http://review-service:9003/api/review/keyword/';
-  private readonly PROTOCOL_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/protocol/'
-    : 'http://review-service:9003/api/review/protocol/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/keyword/`;
+  private readonly PROTOCOL_API_URL = `${environment.apiUrl}/api/review/protocol/`;
   private isBrowser: boolean;
 
   constructor(

@@ -3,18 +3,15 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { SourceDTO } from '../models/source-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SourceService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/data-source/'
-    : 'http://review-service:9003/api/review/data-source/';
-  private readonly PROTOCOL_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/protocol/'
-    : 'http://review-service:9003/api/review/protocol/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/data-source/`;
+  private readonly PROTOCOL_API_URL = `${environment.apiUrl}/api/review/protocol/`;
   private isBrowser: boolean;
 
   constructor(

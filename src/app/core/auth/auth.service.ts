@@ -50,9 +50,7 @@ interface JwtPayload {
 })
 export class AuthService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://localhost:9002/api/login/'
-    : 'http://user-service:9002/api/login/';
+  private readonly API_URL = `${environment.apiUrl}/api/login/`;
   private isBrowser: boolean;
 
   private userSubject = new BehaviorSubject<User | null>(null);
@@ -164,9 +162,7 @@ setUserFromToken(token: string) {
       return;
     }
 
-    const logoutUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-      ? 'http://localhost:9002/api/logout/'
-      : 'http://user-service:9002/api/logout/';
+    const logoutUrl = `${environment.apiUrl}/api/logout/`;
 
     const headers = new HttpHeaders({
       Authorization: `Bearer ${token}`

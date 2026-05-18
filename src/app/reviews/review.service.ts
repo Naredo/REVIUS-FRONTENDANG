@@ -10,12 +10,8 @@ import { environment } from '../../enviroment';
 })
 export class ReviewService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/'
-    : 'http://review-service:9003/api/review/';
-  private readonly USER_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9002/api/user/'
-    : 'http://user-service:9002/api/user/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/`;
+  private readonly USER_API_URL = `${environment.apiUrl}/api/user/`;
   private isBrowser: boolean;
 
   constructor(

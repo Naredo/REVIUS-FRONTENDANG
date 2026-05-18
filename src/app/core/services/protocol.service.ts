@@ -5,15 +5,14 @@ import { Observable } from 'rxjs';
 import { ProtocolDTO } from '../models/protocol-dto';
 import { StudySelectionCriterionDTO } from '../models/study-selection-criterion-dto';
 import { FormFieldDTO } from '../models/form-field-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ProtocolService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/protocol/'
-    : 'http://review-service:9003/api/review/protocol/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/protocol/`;
   private isBrowser: boolean;
 
   constructor(

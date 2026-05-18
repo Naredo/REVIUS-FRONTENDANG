@@ -1,12 +1,12 @@
-// Detectar si estamos en Docker o en localhost
+// URL base del API: siempre a través del gateway.
+// - En navegador: usa mismo origen (proxy) para evitar CORS.
+// - En SSR: usa el gateway directo (por defecto en Docker), con override vía API_URL.
 const getApiUrl = (): string => {
-  // Si estamos en Docker (hostname contiene 'gateway-service' en la red interna)
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    // Cliente en navegador local - acceso directo a user-service
-    return 'http://localhost:9002';
+  if (typeof window !== 'undefined') {
+    return '';
   }
-  // En servidor Angular SSR dentro de Docker - acceso directo a user-service
-  return 'http://user-service:9002';
+
+  return process.env['API_URL'] ?? 'http://gateway-service:9001';
 };
 
 export const environment = {

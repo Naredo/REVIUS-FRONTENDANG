@@ -3,15 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { SourcesSelectionCriterionDTO } from '../models/sources-selection-criterion-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SourcesSelectionCriterionService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/sources-selection-criterion/'
-    : 'http://review-service:9003/api/review/sources-selection-criterion/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/sources-selection-criterion/`;
   private isBrowser: boolean;
 
   constructor(

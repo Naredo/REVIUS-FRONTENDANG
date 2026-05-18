@@ -4,15 +4,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { FormDTO } from '../models/form-dto';
 import { FormFieldDTO } from '../models/form-field-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FormService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/form/'
-    : 'http://review-service:9003/api/review/form/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/form/`;
   private isBrowser: boolean;
 
   constructor(

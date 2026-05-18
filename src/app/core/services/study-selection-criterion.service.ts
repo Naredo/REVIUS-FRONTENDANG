@@ -3,15 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { StudySelectionCriterionDTO } from '../models/study-selection-criterion-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StudySelectionCriterionService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/study-selection-criterion/'
-    : 'http://review-service:9003/api/review/study-selection-criterion/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/study-selection-criterion/`;
   private isBrowser: boolean;
 
   constructor(

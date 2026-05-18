@@ -7,15 +7,14 @@ import { UpdateUserNameDTO } from '../models/update-username-dto';
 import { UpdateProfileDTO } from '../models/update-profile--dto';
 import { NewPasswordDTO } from '../models/new-password-dto';
 import { UserDTO } from '../models/user-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9002/api/user/'
-    : 'http://user-service:9002/api/user/';
+  private readonly API_URL = `${environment.apiUrl}/api/user/`;
 
   constructor(private http: HttpClient) {}
 

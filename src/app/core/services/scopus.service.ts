@@ -3,14 +3,13 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ScopusSearchDTO } from '../models/scopus-search-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ScopusService {
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9004/scopus/'
-    : 'http://search-service:9004/scopus/';
+  private readonly API_URL = `${environment.apiUrl}/scopus/`;
 
   private isBrowser: boolean;
 

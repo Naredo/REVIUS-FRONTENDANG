@@ -3,15 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ReportDTO } from '../models/report-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ReportService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/report/'
-    : 'http://review-service:9003/api/review/report/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/report/`;
   private isBrowser: boolean;
 
   constructor(

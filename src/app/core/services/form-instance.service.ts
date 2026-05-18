@@ -3,14 +3,13 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { FormInstanceDataDTO, FormInstanceSaveRequestDTO } from '../models/form-instance-data-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FormInstanceService {
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/form-instance/'
-    : 'http://review-service:9003/api/review/form-instance/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/form-instance/`;
   private isBrowser: boolean;
 
   constructor(

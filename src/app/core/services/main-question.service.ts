@@ -3,15 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MainQuestionDTO } from '../models/main-question-dto';
+import { environment } from '../../../enviroment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MainQuestionService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9003/api/review/main-question/'
-    : 'http://review-service:9003/api/review/main-question/';
+  private readonly API_URL = `${environment.apiUrl}/api/review/main-question/`;
   private isBrowser: boolean;
 
   constructor(

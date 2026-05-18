@@ -9,9 +9,7 @@ import { environment } from '../../../enviroment';
 })
 export class AdminService {
 
-  private readonly API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:9002/api/admin/'
-    : 'http://user-service:9002/api/admin/';
+  private readonly API_URL = `${environment.apiUrl}/api/admin/`;
 
   constructor(private http: HttpClient) {}
 

@@ -9,6 +9,7 @@ import { UserDTO } from '../../core/models/user-dto';
 import { DataRefreshService } from '../../shared/services/data-refresh.service';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../../enviroment';
 
 @Component({
   selector: 'app-reviews',
@@ -110,7 +111,7 @@ export class ReviewsComponent implements OnInit, OnDestroy {
   async fetchPrincipalReviews() {
     if (!this.isBrowser || !this.userId) return;
     const accessToken = localStorage.getItem('accessToken');
-    const url = `http://localhost:9002/api/user/${this.userId}/my-principal-reviews`;
+    const url = `${environment.apiUrl}/api/user/${this.userId}/my-principal-reviews`;
     try {
       const res = await fetch(url, {
         method: 'GET',
